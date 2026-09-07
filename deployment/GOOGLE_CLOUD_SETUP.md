@@ -31,15 +31,18 @@ Photos and videos are not intentionally stored in this bucket.
 
 ## 3. Google OAuth web client
 
-Create an OAuth Web application client. Configure the Cloud Run callback exactly as:
+Create an OAuth Web application client. Configure the final Cloud Run callback exactly as:
 
 `https://<cloud-run-service-url>/api/oauth/callback`
 
 The app requests only the account-specific scopes it needs:
 
-- Account A: `photospicker.mediaitems.readonly`
-- Account B: `photoslibrary.appendonly`
+- Account A: `https://www.googleapis.com/auth/photospicker.mediaitems.readonly`
+- Account B write: `https://www.googleapis.com/auth/photoslibrary.appendonly`
+- Account B verification read: `https://www.googleapis.com/auth/photoslibrary.readonly.appcreateddata`
 - `openid email` to verify Account A and Account B are different Google accounts
+
+The Account B read scope can read media created by this application; it does not grant general-library read access. No delete scope is requested.
 
 ## 4. Secret Manager
 
@@ -70,33 +73,44 @@ Configure these non-secret repository/environment variables:
 - `GOOGLE_OAUTH_REDIRECT_URI=https://<cloud-run-service-url>/api/oauth/callback`
 - the five `SECRET_*` variables listed above, containing Secret Manager resource names (not secret values)
 
+For the very first Cloud Run deployment, a temporary placeholder value may be used for `GOOGLE_OAUTH_REDIRECT_URI`. After Cloud Run returns the service URL, configure that exact callback in the Google OAuth client, update the GitHub variable, and redeploy before attempting OAuth.
+
 ## 6. Workload Identity Federation
 
-Configure GitHub Actions -> Google Cloud authentication using Workload Identity Federation. Scope the provider to this repository and give the deployment service account only the roles required to deploy Cloud Run and access the referenced secrets.
+Configure GitHub Actions -> Google Cloud authentication using Workload Identity Federation. Scope the provider to this repository and give the deployment service account only the roles required to build/deploy Cloud Run and access the referenced secrets and private ledger bucket.
 
 Do not create or commit a long-lived service-account JSON key.
 
-## 7. Cloud Run public invocation
+## 7. Cloud Run invocation and ledger safety
 
-The browser-hosted GitHub Pages UI must be able to reach the Cloud Run HTTPS endpoint. The Cloud Run service therefore needs public invocation, while the application itself protects every sensitive `/api/**` endpoint using the `X-Migrator-Key` header. `/api/health` and the signed OAuth callback are the only intentionally public API paths.
+The browser-hosted GitHub Pages UI must be able to reach the Cloud Run HTTPS endpoint. The deployment workflow uses public Cloud Run invocation, while the application itself protects every sensitive `/api/**` endpoint using the `X-Migrator-Key` header. `/api/health` and the signed OAuth callback are the intentionally public application paths.
 
-Set Cloud Run IAM for unauthenticated invocation once during infrastructure setup. The deployment workflow intentionally does not change service IAM on every deployment.
+The deployment workflow also sets:
+
+- `--concurrency=1`
+- `--max-instances=1`
+- request timeout `60m`
+
+This keeps the single Excel-ledger design deterministic while browser-side automatic batching breaks large migrations into short restart-safe requests.
 
 ## 8. GitHub Pages
 
-In repository **Settings -> Pages -> Build and deployment**, select **GitHub Actions** as the source. The `Google Photos Migrator Pages` workflow publishes only `docs/`.
+In repository **Settings -> Pages -> Build and deployment**, select **GitHub Actions** as the source. This is a one-time repository setting; the connected GitHub automation API used by this project cannot enable it. The `Google Photos Migrator Pages` workflow publishes only `docs/` from `main`.
 
 ## 9. First deployment sequence
 
-1. Configure Google Cloud resources and secrets.
+1. Configure Google Cloud resources, bucket, service account, Workload Identity Federation, and secrets.
 2. Enable GitHub Pages with GitHub Actions.
-3. Run `Google Photos Migrator Cloud Run` manually from GitHub Actions.
-4. Put the returned Cloud Run URL in the dashboard.
-5. Update `GOOGLE_OAUTH_REDIRECT_URI` to the exact Cloud Run callback URL if necessary and redeploy.
-6. Run the Pages workflow.
-7. Test Account A and Account B OAuth.
-8. Test one photo only.
-9. Check Account B and the downloaded Excel ledger.
-10. Only then increase the transfer batch size.
+3. Set the GitHub variables; use a temporary OAuth redirect placeholder if the Cloud Run URL is not known yet.
+4. Run `Google Photos Migrator Cloud Run` manually from GitHub Actions.
+5. Copy the returned Cloud Run URL.
+6. Add `https://<cloud-run-service-url>/api/oauth/callback` to the Google OAuth Web client.
+7. Update `GOOGLE_OAUTH_REDIRECT_URI` to that exact URL and redeploy Cloud Run.
+8. Run/rerun the Pages workflow.
+9. Put the Cloud Run URL and the private app access key into the dashboard.
+10. Connect Account A, then a different Account B.
+11. Test one photo only and verify Account B plus the Excel ledger.
+12. Test a mixed 10-item photo/video selection and exercise Resume if a video is still processing.
+13. Only then increase selection/batch sizes.
 
 Source deletion remains outside the application by design.

@@ -1,13 +1,13 @@
-# Google Photos Migrator — Java branch
+# Google Photos Migrator — Java
 
-Java-first Google Photos migration application. This branch intentionally uses **no Selenium/WebDriver**.
+Java-first Google Photos migration application. This implementation intentionally uses **no Selenium/WebDriver** and does **not** implement source deletion.
 
 ## Architecture
 
 - Frontend: static HTML/CSS/JS in `docs/` for GitHub Pages.
 - Backend: Java 21 + Spring Boot.
 - Source: Google Photos Picker API (`photospicker.mediaitems.readonly`).
-- Destination: Google Photos Library append-only scope.
+- Destination: Google Photos Library `appendonly` plus `readonly.appcreateddata` solely to verify media created by this migrator.
 - Migration ledger/database: `.xlsx` using Apache POI.
 - Persistent ledger: private Google Cloud Storage object in production.
 - OAuth credentials: separate Source/Destination credentials; AES-256-GCM encrypted GCS vault in production.
@@ -20,11 +20,14 @@ Java-first Google Photos migration application. This branch intentionally uses *
 2. Source and destination Google account emails must be different.
 3. OAuth secrets/tokens and Excel ledgers are never committed to GitHub.
 4. Photos/videos are streamed between Google services and are not persisted in GitHub.
-5. Destination permissions remain append-only.
+5. Destination OAuth has no delete permission and cannot read the user's general library; its read scope is limited to app-created media for post-upload verification.
 6. Cloud Storage Excel writes use generation preconditions.
-7. Videos are downloaded only when Picker metadata reports processing status `READY`.
-8. Production API access is protected by `APP_ACCESS_KEY` / `X-Migrator-Key`.
-9. OAuth state is stateless, HMAC-signed and time-limited so Cloud Run scale-to-zero does not break callbacks.
+7. Source videos are downloaded only when Picker metadata reports processing status `READY`.
+8. Destination videos remain in `WAITING_DESTINATION_READY` until Google reports them `READY`; waiting does not consume another upload attempt.
+9. Videos and large media use Google Photos resumable uploads; smaller media may use raw upload.
+10. Production API access is protected by `APP_ACCESS_KEY` / `X-Migrator-Key`.
+11. OAuth state is stateless, HMAC-signed and time-limited so Cloud Run scale-to-zero does not break callbacks.
+12. Production Cloud Run is constrained to one instance / one concurrent request to protect the single Excel ledger model.
 
 ## Development
 
@@ -68,14 +71,19 @@ See `deployment/GOOGLE_CLOUD_SETUP.md` for the no-local-clone deployment checkli
 - [x] Private access-key gate for sensitive API endpoints
 - [x] Picker session creation, polling and pagination
 - [x] Picker media stream download
-- [x] Streaming destination upload
+- [x] Raw + resumable destination upload paths
 - [x] SHA-256 calculated while media streams to destination
+- [x] Source/destination video processing wait states
+- [x] Destination app-created media verification
 - [x] Excel retry/resume states
-- [x] Browser migration dashboard
+- [x] Browser restart-safe automatic batching
 - [x] Downloadable Excel report
+- [x] Regression tests for video waiting / verification behavior
 - [x] GitHub Pages deployment workflow
 - [x] Manual Cloud Run deployment workflow using Workload Identity Federation
 - [x] GitHub Actions Maven CI
+- [x] Feature merged to `main`
+- [ ] One-time GitHub Pages repository enablement
 - [ ] One-time Google Cloud/OAuth infrastructure configuration
 - [ ] Live 1-photo migration test
 - [ ] Live 10-photo/video migration test
