@@ -56,6 +56,9 @@ public class LocalLibraryUploadClient {
 
     public CreatedMediaItem uploadAndCreate(AccessTokenProvider tokens, TakeoutMediaItem item) {
         if (item.duplicate()) throw new IllegalArgumentException("Duplicate Takeout entries must not be uploaded: " + item.sourceRef());
+        if (item.mimeType() == null || item.mimeType().isBlank()) {
+            throw new IllegalArgumentException("Media MIME type is required: " + item.sourceRef());
+        }
         TakeoutEntrySource source = TakeoutEntrySource.from(item);
         String uploadToken = uploadResumable(tokens, source, item.mimeType());
         return createMediaItem(tokens, uploadToken, item.fileName());
@@ -105,11 +108,9 @@ public class LocalLibraryUploadClient {
                     if (serverOffset < 0 || serverOffset > source.sizeBytes()) {
                         throw new IllegalStateException("Google Photos returned invalid resumable offset: " + serverOffset);
                     }
-                    if (serverOffset != offset) {
-                        stream.close();
-                        offset = serverOffset;
-                        stream = source.open(offset);
-                    }
+                    stream.close();
+                    offset = serverOffset;
+                    stream = source.open(offset);
                     sleepBackoff(retryCount);
                 }
             }
@@ -122,24 +123,9 @@ public class LocalLibraryUploadClient {
     }
 
     private UploadSession startSession(AccessTokenProvider tokens, String mimeType, long sizeBytes) {
-        HttpRequest request = requestWithAuth(URI.create(uploadsEndpoint), tokens.accessToken())
-                .timeout(Duration.ofMinutes(2))
-                .header("Content-Length", "0")
-                .header("X-Goog-Upload-Command", "start")
-                .header("X-Goog-Upload-Content-Type", mimeType)
-                .header("X-Goog-Upload-Protocol", "resumable")
-                .header("X-Goog-Upload-Raw-Size", Long.toString(sizeBytes))
-                .POST(HttpRequest.BodyPublishers.noBody())
-                .build();
+        HttpRequest request = startRequest(tokens.accessToken(), mimeType, sizeBytes);
         HttpResponse<String> response = sendWithAuthRetry(request, tokens,
-                token -> requestWithAuth(URI.create(uploadsEndpoint), token)
-                        .timeout(Duration.ofMinutes(2))
-                        .header("Content-Length", "0")
-                        .header("X-Goog-Upload-Command", "start")
-                        .header("X-Goog-Upload-Content-Type", mimeType)
-                        .header("X-Goog-Upload-Protocol", "resumable")
-                        .header("X-Goog-Upload-Raw-Size", Long.toString(sizeBytes))
-                        .POST(HttpRequest.BodyPublishers.noBody()).build(),
+                token -> startRequest(token, mimeType, sizeBytes),
                 "Unable to start Google Photos resumable upload");
         String url = response.headers().firstValue("X-Goog-Upload-URL")
                 .orElseThrow(() -> new IllegalStateException("Google Photos did not return X-Goog-Upload-URL"));
@@ -147,6 +133,17 @@ public class LocalLibraryUploadClient {
                 .map(value -> parsePositiveInt(value, DEFAULT_GRANULARITY))
                 .orElse(DEFAULT_GRANULARITY);
         return new UploadSession(url, granularity);
+    }
+
+    private HttpRequest startRequest(String accessToken, String mimeType, long sizeBytes) {
+        return requestWithAuth(URI.create(uploadsEndpoint), accessToken)
+                .timeout(Duration.ofMinutes(2))
+                .header("X-Goog-Upload-Command", "start")
+                .header("X-Goog-Upload-Content-Type", mimeType)
+                .header("X-Goog-Upload-Protocol", "resumable")
+                .header("X-Goog-Upload-Raw-Size", Long.toString(sizeBytes))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
     }
 
     private HttpResponse<String> sendChunk(AccessTokenProvider tokens, String url, long offset, byte[] chunk, boolean last) {
@@ -197,7 +194,6 @@ public class LocalLibraryUploadClient {
     private HttpRequest queryRequest(String url, String token) {
         return requestWithAuth(URI.create(url), token)
                 .timeout(Duration.ofMinutes(2))
-                .header("Content-Length", "0")
                 .header("X-Goog-Upload-Command", "query")
                 .POST(HttpRequest.BodyPublishers.noBody())
                 .build();
