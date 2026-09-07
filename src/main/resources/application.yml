@@ -26,3 +26,5 @@ app:
     credential-vault-bucket: ${OAUTH_VAULT_BUCKET:${LEDGER_BUCKET_NAME:}}
     credential-vault-prefix: ${OAUTH_VAULT_PREFIX:oauth}
     credential-vault-key-base64: ${OAUTH_VAULT_KEY_BASE64:}
+  transfer:
+    max-attempts: ${TRANSFER_MAX_ATTEMPTS:3}
