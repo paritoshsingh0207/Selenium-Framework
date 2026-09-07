@@ -1,14 +1,14 @@
 package com.paritosh.photosmigrator;
 
-import com.paritosh.photosmigrator.local.LocalInventoryCli;
+import com.paritosh.photosmigrator.local.LocalMigratorCli;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 public class PhotosMigratorApplication {
     public static void main(String[] args) {
-        if (LocalInventoryCli.isInventoryCommand(args)) {
-            int exitCode = LocalInventoryCli.run(args);
+        if (LocalMigratorCli.isLocalCommand(args)) {
+            int exitCode = LocalMigratorCli.run(args);
             if (exitCode != 0) System.exit(exitCode);
             return;
         }
