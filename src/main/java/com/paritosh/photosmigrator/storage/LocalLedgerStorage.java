@@ -1,6 +1,6 @@
 package com.paritosh.photosmigrator.storage;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
 @Component
-@ConditionalOnMissingBean(LedgerStorage.class)
+@ConditionalOnProperty(name = "app.ledger.storage-mode", havingValue = "local", matchIfMissing = true)
 public class LocalLedgerStorage implements LedgerStorage {
     private final Path directory = Path.of(System.getProperty("java.io.tmpdir"), "photos-migrator-ledgers");
 

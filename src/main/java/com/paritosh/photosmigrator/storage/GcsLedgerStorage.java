@@ -10,7 +10,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(name = "app.ledger.bucket-name")
+@ConditionalOnProperty(name = "app.ledger.storage-mode", havingValue = "gcs")
 public class GcsLedgerStorage implements LedgerStorage {
     private static final String XLSX_CONTENT_TYPE =
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -22,6 +22,9 @@ public class GcsLedgerStorage implements LedgerStorage {
     public GcsLedgerStorage(
             @Value("${app.ledger.bucket-name}") String bucketName,
             @Value("${app.ledger.object-prefix:migrations}") String objectPrefix) {
+        if (bucketName == null || bucketName.isBlank()) {
+            throw new IllegalStateException("LEDGER_BUCKET_NAME is required when LEDGER_STORAGE_MODE=gcs");
+        }
         this.storage = StorageOptions.getDefaultInstance().getService();
         this.bucketName = bucketName;
         this.objectPrefix = objectPrefix;
