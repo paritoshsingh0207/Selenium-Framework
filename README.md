@@ -1,67 +1,81 @@
-# Google Photos Migrator — Java
+# Google Photos Migrator — Zero Billing
 
-Java-first Google Photos migration application. This implementation intentionally uses **no Selenium/WebDriver** and does **not** implement source deletion.
+A private Google Photos account-to-account migration orchestrator with a hard **₹0 infrastructure / no billing attachment** requirement.
 
-## Zero-billing constraint
+## Production architecture
 
-This project is now explicitly constrained to **₹0 / no Google Cloud billing attachment**.
+The production path no longer transfers media through our own backend. Google Photos performs the copy internally:
+
+- **Whole library:** Google Photos Partner Sharing → Account B → Save to your account.
+- **Selected media:** Google Photos Shared Album → Account B → Save all photos and videos.
+- **Orchestration:** static GitHub Pages dashboard in `docs/`.
+- **Ledger:** browser-local state with dependency-free `.xlsx` and JSON export.
+
+No production OAuth token, photo, video, ledger or secret is sent to this repository or to an application backend.
+
+## Hard zero-billing constraint
 
 Allowed:
-- GitHub repository and GitHub Actions CI
-- GitHub Pages frontend
-- Java code and Excel ledger logic
-- Google Photos APIs only in a design that does not require a billed backend
 
-Not allowed for this project:
+- GitHub repository
+- GitHub Actions CI
+- GitHub Pages
+- browser-local storage for migration progress
+- Google Photos' own Partner Sharing and Shared Album features
+
+Not allowed:
+
 - Google Cloud billing link
 - Cloud Run
 - Cloud Storage
 - Secret Manager
 - Artifact Registry / Cloud Build deployment
-- any paid hosted backend
+- Firebase billing
+- paid workers or paid hosted backends
 
-The earlier Cloud Run deployment path has been retired. `deployment/bootstrap-gcp.sh` now exits without creating resources, and the Cloud Run GitHub Actions workflow has been removed.
+The earlier Cloud Run path has been retired. `deployment/bootstrap-gcp.sh` is a no-side-effect guard and the Cloud Run workflow is removed.
 
-## Existing application capabilities
+## Dashboard responsibilities
 
-- Java 21 + Spring Boot backend code
-- Google Photos Picker API source flow
-- Google Photos Library destination upload flow
-- separate source/destination OAuth identities
-- different-account validation
-- resumable media upload support
-- source/destination video processing states
-- SHA-256 during transfer
-- Excel retry/resume ledger
-- browser dashboard under `docs/`
-- GitHub Pages deployment
-- Maven CI and regression tests
+The GitHub Pages application:
 
-These backend capabilities remain in source for reuse, but they are **not currently deployed** because the previous production target required billing.
+- records Account A and Account B identifiers locally;
+- prevents same-account verification;
+- guides whole-library Partner Sharing;
+- creates selected-media migration batch IDs;
+- records source/destination counts and lifecycle state;
+- blocks VERIFIED for a selected batch unless non-zero source/destination counts match;
+- maintains an audit history;
+- exports an Excel workbook with `Summary`, `Items`, `Failures`, `Audit`, and `Config` sheets;
+- keeps source deletion manual and outside the application.
+
+The application never proxies or stores media bytes.
 
 ## Safety rules
 
 1. Source deletion is not implemented.
-2. Source and destination Google account emails must be different.
-3. OAuth secrets/tokens and Excel ledgers must never be committed to GitHub.
+2. Account A and Account B must be different.
+3. Verify the destination before deleting anything from Account A.
 4. Photos/videos must never be committed to GitHub.
 5. No billing account may be attached for this project.
-6. No live migration should start until the zero-billing runtime design is validated.
+6. Direct account sharing is preferred over public album links for selected migrations.
+7. Partner Sharing primarily migrates media; arbitrary album organization is not automatically recreated.
+
+## Legacy Java code
+
+The Java 21 / Spring Boot API implementation remains in `src/` as an archived engineering prototype with regression tests. It includes Picker API, upload, video-processing and Excel-ledger logic, but it is **not part of the zero-billing production runtime**.
 
 ## Current status
 
-- [x] Core Java migration logic
-- [x] Excel migration ledger
-- [x] Dual-account OAuth implementation
-- [x] Picker session flow
-- [x] Streaming/resumable destination upload logic
-- [x] Video processing verification
-- [x] Browser dashboard
-- [x] GitHub Pages deployed
-- [x] GitHub Actions Maven CI
+- [x] Java migration prototype and regression tests
 - [x] Billed Cloud Run deployment path retired
-- [ ] Zero-billing runtime architecture redesign
-- [ ] Live 1-photo migration test on zero-billing architecture
-- [ ] Live mixed photo/video migration test
+- [x] GitHub Pages enabled
+- [x] Zero-billing native Google Photos architecture defined
+- [x] Browser-only Partner Sharing workflow
+- [x] Browser-only Shared Album batch workflow
+- [x] Browser-local audit ledger
+- [x] Dependency-free `.xlsx` export
+- [ ] Live whole-library workflow acceptance test
+- [ ] Live selected small-batch acceptance test
 
-See `deployment/GOOGLE_CLOUD_SETUP.md` for cleanup instructions if the old billed Google Cloud bootstrap was started.
+See `docs/zero-billing-design.md` for the architecture and `deployment/GOOGLE_CLOUD_SETUP.md` for cleanup information from the retired cloud design.
