@@ -3,60 +3,105 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Google Photos Migrator</title>
+  <meta name="description" content="Zero-billing Google Photos account-to-account migration orchestrator using Partner Sharing and Shared Albums.">
+  <title>Google Photos Migrator · Zero Billing</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <main class="shell">
-  <header>
-    <p class="eyebrow">PRIVATE MIGRATION UTILITY</p>
+  <header class="hero">
+    <div class="badges"><span>₹0 INFRASTRUCTURE</span><span>NO BACKEND</span><span>NO OAUTH TOKENS</span></div>
+    <p class="eyebrow">PRIVATE MIGRATION ORCHESTRATOR</p>
     <h1>Google Photos Migrator</h1>
-    <p>Move selected media from Account A to Account B with a persistent Excel audit ledger. Source deletion is not implemented.</p>
+    <p class="lead">Google Photos performs the copy. This page only guides the migration, keeps a local audit ledger, and exports Excel. No photo or video is sent through this project.</p>
   </header>
 
-  <section class="card">
-    <h2>Backend</h2>
-    <div class="form-grid">
-      <label>Cloud Run API URL<input id="apiBase" placeholder="https://your-service.run.app"></label>
-      <label>Private access key<input id="accessKey" type="password" autocomplete="off" placeholder="Not saved permanently"></label>
-    </div>
-    <div class="row"><button id="saveApi">Use connection</button></div>
-    <p id="backendStatus" class="status">Checking…</p>
-  </section>
-
-  <section class="card grid">
-    <div>
-      <h2>Account A · Source</h2>
-      <p class="muted">Picker read access only.</p>
-      <p id="sourceStatus" class="status">Not connected</p>
-      <button id="connectSource">Connect Account A</button>
-    </div>
-    <div>
-      <h2>Account B · Destination</h2>
-      <p class="muted">Append-only access plus read access only to media created by this migrator, used for verification.</p>
-      <p id="destinationStatus" class="status">Not connected</p>
-      <button id="connectDestination">Connect Account B</button>
+  <section class="card safety">
+    <h2>Zero-billing safety contract</h2>
+    <div class="safety-grid">
+      <div><strong>✓ No Cloud Run</strong><span>No server runtime.</span></div>
+      <div><strong>✓ No Google Cloud billing</strong><span>No billing account is required.</span></div>
+      <div><strong>✓ No media relay</strong><span>Bytes stay inside Google Photos.</span></div>
+      <div><strong>✓ No source deletion</strong><span>Deletion remains manual after verification.</span></div>
     </div>
   </section>
 
   <section class="card">
-    <h2>1 · Select media</h2>
-    <p class="muted">Google Picker supports up to 2,000 items in one session.</p>
-    <div class="row"><input id="pickerMax" type="number" min="1" max="2000" value="2000"><button id="startPicker">Open Google Photos Picker</button></div>
-    <p id="pickerStatus" class="status">No active Picker session</p>
+    <h2>Migration setup</h2>
+    <p class="muted">These details are stored only in this browser's local storage. Nothing is submitted to a server.</p>
+    <div class="form-grid three">
+      <label>Migration ID<input id="migrationId" autocomplete="off"></label>
+      <label>Account A · source email<input id="sourceEmail" type="email" autocomplete="off" placeholder="source@gmail.com"></label>
+      <label>Account B · destination email<input id="destinationEmail" type="email" autocomplete="off" placeholder="destination@gmail.com"></label>
+    </div>
+    <div class="row"><button id="saveSetup">Save setup</button><span id="setupStatus" class="status"></span></div>
   </section>
 
   <section class="card">
-    <h2>2 · Transfer safely in batches</h2>
-    <div class="form-grid">
-      <label>Migration ID<input id="migrationId"></label>
-      <label>Uploads per request<input id="batchSize" type="number" min="1" max="100" value="25"></label>
+    <div class="section-head">
+      <div><h2>Choose transfer mode</h2><p class="muted">Use Partner Sharing for a whole library. Use Shared Albums for arbitrary selected batches.</p></div>
     </div>
-    <p class="muted">The browser automatically runs short restart-safe requests and pauses if a video is still processing or an item needs attention.</p>
-    <div class="row"><button id="transfer">Start / Resume Transfer</button><button id="refreshSummary" class="secondary">Refresh Status</button><button id="downloadReport" class="secondary">Download Excel</button></div>
+    <div class="mode-grid">
+      <button class="mode-card active" data-mode="partner" id="modePartner">
+        <span class="mode-kicker">MODE A</span><strong>Whole library</strong><small>Partner Sharing → Save to your account</small>
+      </button>
+      <button class="mode-card" data-mode="batch" id="modeBatch">
+        <span class="mode-kicker">MODE B</span><strong>Selected media</strong><small>Shared Album → Save all</small>
+      </button>
+    </div>
+  </section>
+
+  <section id="partnerPanel" class="card mode-panel">
+    <div class="section-head">
+      <div><p class="eyebrow">MODE A · WHOLE LIBRARY</p><h2>Partner Sharing checklist</h2></div>
+      <div class="row"><a class="button-link secondary" href="https://photos.google.com/settings" target="_blank" rel="noopener">Open Google Photos settings</a></div>
+    </div>
+    <p class="muted">In Account A choose Partner Sharing → <strong>All time</strong> → <strong>All photos</strong> and invite Account B. Then Account B accepts and chooses <strong>Save to your account → All photos</strong>.</p>
+    <div class="checklist" id="partnerChecklist">
+      <label><input type="checkbox" data-step="sourceShared"> Account A: Partner Sharing configured for All time / All photos</label>
+      <label><input type="checkbox" data-step="destinationAccepted"> Account B: invitation accepted</label>
+      <label><input type="checkbox" data-step="saveEnabled"> Account B: Save to your account → All photos enabled</label>
+      <label><input type="checkbox" data-step="verifyOldest"> Verification: an old photo is visible in Account B</label>
+      <label><input type="checkbox" data-step="verifyNewest"> Verification: a recent photo is visible in Account B</label>
+      <label><input type="checkbox" data-step="verifyVideo"> Verification: at least one video plays in Account B</label>
+      <label><input type="checkbox" data-step="verifyRandom"> Verification: media from another random date is visible</label>
+    </div>
+    <div class="row"><button id="partnerVerified">Mark whole-library migration VERIFIED</button><span id="partnerStatus" class="status">PLANNED</span></div>
+    <p class="note">Partner Sharing moves media, not arbitrary album organization. If preserving album structure matters, record important albums as separate Shared Album batches below.</p>
+  </section>
+
+  <section id="batchPanel" class="card mode-panel hidden">
+    <div class="section-head">
+      <div><p class="eyebrow">MODE B · SELECTED MEDIA</p><h2>Shared Album batches</h2></div>
+      <div class="row"><a class="button-link secondary" href="https://photos.google.com/" target="_blank" rel="noopener">Open Google Photos</a></div>
+    </div>
+    <p class="muted">In Account A select the media, create a shared album using the generated batch name, and share it directly with Account B. In Account B open the album and choose <strong>Save all photos and videos</strong>.</p>
+
+    <div class="form-grid three">
+      <label>Batch ID<input id="batchId" readonly></label>
+      <label>Batch title<input id="batchTitle" autocomplete="off"></label>
+      <label>Status<select id="batchStatus"><option>PLANNED</option><option>SOURCE_SHARED</option><option>DESTINATION_ACCEPTED</option><option>SAVE_REQUESTED</option><option>VERIFYING</option><option>VERIFIED</option><option>NEEDS_REVIEW</option></select></label>
+      <label>Source item count<input id="sourceCount" type="number" min="0" inputmode="numeric"></label>
+      <label>Destination item count<input id="destinationCount" type="number" min="0" inputmode="numeric"></label>
+      <label>Notes<input id="batchNotes" autocomplete="off" placeholder="Optional verification note"></label>
+    </div>
+    <div class="row"><button id="saveBatch">Add batch</button><button id="newBatch" class="secondary">New batch</button></div>
+    <div class="table-wrap"><table><thead><tr><th>Batch</th><th>Title</th><th>Source</th><th>Destination</th><th>Status</th><th>Updated</th><th></th></tr></thead><tbody id="batchRows"></tbody></table></div>
+    <p class="note">A selected batch can be marked VERIFIED only when both counts are greater than zero and match. This is intentionally conservative.</p>
+  </section>
+
+  <section class="card">
+    <div class="section-head">
+      <div><h2>Audit ledger</h2><p class="muted">Browser-local ledger with Excel and JSON export.</p></div>
+      <div class="row"><button id="exportXlsx">Download Excel</button><button id="exportJson" class="secondary">JSON backup</button><button id="clearData" class="danger">Clear local ledger</button></div>
+    </div>
     <div id="summary" class="summary"></div>
-    <pre id="activity">Ready.</pre>
+    <pre id="activity">Ready. Zero-billing mode active.</pre>
   </section>
+
+  <footer>
+    <p><strong>Important:</strong> Verify Account B before deleting anything from Account A. Normal Shared Album saves count toward the destination account's Google storage quota. Partner Sharing has special storage behavior while sharing continues.</p>
+  </footer>
 </main>
 <script src="app.js"></script>
 </body>
