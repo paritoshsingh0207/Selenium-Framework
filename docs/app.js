@@ -1,14 +1,17 @@
 const $ = id => document.getElementById(id);
 let API_BASE = localStorage.getItem('photosMigratorApi') || 'http://localhost:8080';
+let ACCESS_KEY = sessionStorage.getItem('photosMigratorKey') || '';
 let sessionId = localStorage.getItem('photosPickerSession') || '';
 let pollTimer = null;
 
 $('apiBase').value = API_BASE;
+$('accessKey').value = ACCESS_KEY;
 $('migrationId').value = localStorage.getItem('photosMigrationId') || `migration-${new Date().toISOString().slice(0,10)}`;
 
 function log(message) { $('activity').textContent = `[${new Date().toLocaleTimeString()}] ${message}\n` + $('activity').textContent; }
+function authHeaders() { return ACCESS_KEY ? {'X-Migrator-Key': ACCESS_KEY} : {}; }
 async function api(path, options = {}) {
-  const response = await fetch(`${API_BASE}${path}`, {headers:{'Content-Type':'application/json', ...(options.headers||{})}, ...options});
+  const response = await fetch(`${API_BASE}${path}`, {headers:{'Content-Type':'application/json', ...authHeaders(), ...(options.headers||{})}, ...options});
   if (!response.ok) {
     let message = `HTTP ${response.status}`;
     try { const body = await response.json(); message = body.message || message; } catch (_) {}
@@ -44,8 +47,7 @@ async function createPicker() {
     const data = await api('/api/picker/sessions', {method:'POST', body:JSON.stringify({maxItemCount})});
     sessionId = data.id; localStorage.setItem('photosPickerSession', sessionId);
     $('pickerStatus').textContent = `Session ${sessionId} · waiting for selection`;
-    const uri = `${data.pickerUri}/autoclose`;
-    window.open(uri, '_blank', 'noopener');
+    window.open(`${data.pickerUri}/autoclose`, '_blank', 'noopener');
     pollPicker(data.pollingConfig?.pollInterval);
   } catch (e) { log(`Picker: ${e.message}`); }
 }
@@ -86,12 +88,25 @@ async function summary() {
     $('summary').innerHTML = entries.length ? entries.map(([k,v]) => `<div><strong>${v}</strong><span>${k.replaceAll('_',' ')}</span></div>`).join('') : '<span>No items recorded yet.</span>';
   } catch (e) { log(`Summary: ${e.message}`); }
 }
-function downloadReport() {
+async function downloadReport() {
   const migrationId = $('migrationId').value.trim(); if (!migrationId) return log('Migration ID is required.');
-  window.open(`${API_BASE}/api/migrations/${encodeURIComponent(migrationId)}/report.xlsx`, '_blank');
+  try {
+    const response = await fetch(`${API_BASE}/api/migrations/${encodeURIComponent(migrationId)}/report.xlsx`, {headers: authHeaders()});
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `${migrationId.replace(/[^a-zA-Z0-9._-]/g,'_')}.xlsx`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (e) { log(`Report: ${e.message}`); }
 }
 
-$('saveApi').onclick = () => { API_BASE = $('apiBase').value.trim().replace(/\/$/, ''); localStorage.setItem('photosMigratorApi', API_BASE); health(); authStatus(); };
+$('saveApi').onclick = () => {
+  API_BASE = $('apiBase').value.trim().replace(/\/$/, '');
+  ACCESS_KEY = $('accessKey').value;
+  localStorage.setItem('photosMigratorApi', API_BASE);
+  sessionStorage.setItem('photosMigratorKey', ACCESS_KEY);
+  health(); authStatus();
+};
 $('connectSource').onclick = () => connect('source');
 $('connectDestination').onclick = () => connect('destination');
 $('startPicker').onclick = createPicker;
@@ -101,6 +116,6 @@ $('downloadReport').onclick = downloadReport;
 
 const query = new URLSearchParams(location.search);
 if (query.get('oauth')) log(`OAuth completed: ${query.get('oauth')}`);
-if (query.get('oauth_error')) log(`OAuth error: ${query.get('oauth_error')}`);
+if (query.get('oauth_error')) log('OAuth could not be completed. Check the backend logs and reconnect the account.');
 health(); authStatus();
 if (sessionId) { $('pickerStatus').textContent = `Existing session ${sessionId}; checking…`; pollPicker('1s'); }

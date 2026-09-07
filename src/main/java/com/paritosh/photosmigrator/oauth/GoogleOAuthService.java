@@ -7,6 +7,8 @@ import com.paritosh.photosmigrator.model.AccountRole;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -14,19 +16,18 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.Base64;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class GoogleOAuthService {
     private static final String AUTHORIZE = "https://accounts.google.com/o/oauth2/v2/auth";
     private static final String TOKEN = "https://oauth2.googleapis.com/token";
     private static final String USERINFO = "https://www.googleapis.com/oauth2/v3/userinfo";
+    private static final long STATE_MAX_AGE_SECONDS = 600;
 
     private final HttpClient httpClient = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
     private final ObjectMapper objectMapper;
@@ -34,27 +35,27 @@ public class GoogleOAuthService {
     private final String clientId;
     private final String clientSecret;
     private final String redirectUri;
+    private final String stateSecret;
     private final SecureRandom secureRandom = new SecureRandom();
-    private final Map<String, PendingAuthorization> pending = new ConcurrentHashMap<>();
 
     public GoogleOAuthService(
             ObjectMapper objectMapper,
             CredentialVault vault,
             @Value("${app.google.oauth-client-id:}") String clientId,
             @Value("${app.google.oauth-client-secret:}") String clientSecret,
-            @Value("${app.google.oauth-redirect-uri}") String redirectUri) {
+            @Value("${app.google.oauth-redirect-uri}") String redirectUri,
+            @Value("${app.google.oauth-state-secret:}") String stateSecret) {
         this.objectMapper = objectMapper;
         this.vault = vault;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
         this.redirectUri = redirectUri;
+        this.stateSecret = stateSecret;
     }
 
     public String authorizationUrl(AccountRole role) {
         ensureConfigured();
-        cleanupPending();
-        String state = randomState();
-        pending.put(state, new PendingAuthorization(role, Instant.now()));
+        String state = createState(role);
         String scope = "openid email " + scopeFor(role);
         return AUTHORIZE + "?client_id=" + enc(clientId)
                 + "&redirect_uri=" + enc(redirectUri)
@@ -67,10 +68,7 @@ public class GoogleOAuthService {
     }
 
     public AccountRole completeAuthorization(String state, String code) {
-        PendingAuthorization authorization = pending.remove(state);
-        if (authorization == null || authorization.createdAt().isBefore(Instant.now().minus(10, ChronoUnit.MINUTES))) {
-            throw new IllegalArgumentException("OAuth state is invalid or expired");
-        }
+        AccountRole role = verifyState(state);
         JsonNode token = tokenRequest("code=" + enc(code)
                 + "&client_id=" + enc(clientId)
                 + "&client_secret=" + enc(clientSecret)
@@ -79,19 +77,19 @@ public class GoogleOAuthService {
         String accessToken = required(token, "access_token");
         String refreshToken = token.path("refresh_token").asText("");
         if (refreshToken.isBlank()) {
-            refreshToken = vault.load(authorization.role()).map(OAuthCredential::refreshToken).orElse("");
+            refreshToken = vault.load(role).map(OAuthCredential::refreshToken).orElse("");
         }
         long expiresIn = token.path("expires_in").asLong(3600);
         String email = fetchEmail(accessToken);
-        ensureDifferentAccount(authorization.role(), email);
+        ensureDifferentAccount(role, email);
         OAuthCredential credential = new OAuthCredential(
                 accessToken,
                 refreshToken,
                 Instant.now().plusSeconds(Math.max(60, expiresIn)),
                 email,
-                token.path("scope").asText(scopeFor(authorization.role())));
-        vault.save(authorization.role(), credential);
-        return authorization.role();
+                token.path("scope").asText(scopeFor(role)));
+        vault.save(role, credential);
+        return role;
     }
 
     public String accessToken(AccountRole role) {
@@ -125,6 +123,47 @@ public class GoogleOAuthService {
 
     public void disconnect(AccountRole role) {
         vault.clear(role);
+    }
+
+    private String createState(AccountRole role) {
+        byte[] nonce = new byte[18];
+        secureRandom.nextBytes(nonce);
+        String payload = role.name() + "." + Instant.now().getEpochSecond() + "."
+                + Base64.getUrlEncoder().withoutPadding().encodeToString(nonce);
+        return payload + "." + sign(payload);
+    }
+
+    private AccountRole verifyState(String state) {
+        if (state == null || state.isBlank()) throw new IllegalArgumentException("OAuth state is missing");
+        String[] parts = state.split("\\.", -1);
+        if (parts.length != 4) throw new IllegalArgumentException("OAuth state is invalid");
+        String payload = parts[0] + "." + parts[1] + "." + parts[2];
+        byte[] expected = sign(payload).getBytes(StandardCharsets.UTF_8);
+        byte[] actual = parts[3].getBytes(StandardCharsets.UTF_8);
+        if (!MessageDigest.isEqual(expected, actual)) throw new IllegalArgumentException("OAuth state signature is invalid");
+        long issuedAt;
+        try {
+            issuedAt = Long.parseLong(parts[1]);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("OAuth state timestamp is invalid");
+        }
+        long age = Instant.now().getEpochSecond() - issuedAt;
+        if (age < -60 || age > STATE_MAX_AGE_SECONDS) throw new IllegalArgumentException("OAuth state is expired");
+        try {
+            return AccountRole.valueOf(parts[0]);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("OAuth account role is invalid");
+        }
+    }
+
+    private String sign(String payload) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(stateSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(mac.doFinal(payload.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            throw new IllegalStateException("Unable to sign OAuth state", e);
+        }
     }
 
     private void ensureDifferentAccount(AccountRole role, String email) {
@@ -177,25 +216,15 @@ public class GoogleOAuthService {
     }
 
     private void ensureConfigured() {
-        if (clientId.isBlank() || clientSecret.isBlank()) {
+        if (clientId == null || clientId.isBlank() || clientSecret == null || clientSecret.isBlank()) {
             throw new IllegalStateException("Google OAuth client ID and secret are not configured");
         }
-    }
-
-    private String randomState() {
-        byte[] bytes = new byte[32];
-        secureRandom.nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private void cleanupPending() {
-        Instant cutoff = Instant.now().minus(10, ChronoUnit.MINUTES);
-        pending.entrySet().removeIf(entry -> entry.getValue().createdAt().isBefore(cutoff));
+        if (stateSecret == null || stateSecret.length() < 32) {
+            throw new IllegalStateException("OAUTH_STATE_SECRET must be configured with at least 32 characters");
+        }
     }
 
     private String enc(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
-
-    private record PendingAuthorization(AccountRole role, Instant createdAt) { }
 }

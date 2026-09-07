@@ -16,8 +16,11 @@
 
   <section class="card">
     <h2>Backend</h2>
-    <label>Cloud Run API URL</label>
-    <div class="row"><input id="apiBase" placeholder="https://your-service.run.app"><button id="saveApi">Save</button></div>
+    <div class="form-grid">
+      <label>Cloud Run API URL<input id="apiBase" placeholder="https://your-service.run.app"></label>
+      <label>Private access key<input id="accessKey" type="password" autocomplete="off" placeholder="Not saved permanently"></label>
+    </div>
+    <div class="row"><button id="saveApi">Use connection</button></div>
     <p id="backendStatus" class="status">Checking…</p>
   </section>
 
