@@ -7,5 +7,6 @@ public record TransferRunResult(
         int processed,
         int verified,
         int skipped,
-        int failed
+        int failed,
+        int waiting
 ) { }

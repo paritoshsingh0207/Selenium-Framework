@@ -3,7 +3,11 @@ package com.paritosh.photosmigrator.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.paritosh.photosmigrator.google.LibraryUploadClient;
 import com.paritosh.photosmigrator.google.PickerApiClient;
-import com.paritosh.photosmigrator.model.*;
+import com.paritosh.photosmigrator.model.AccountRole;
+import com.paritosh.photosmigrator.model.MigrationItem;
+import com.paritosh.photosmigrator.model.MigrationStatus;
+import com.paritosh.photosmigrator.model.PickedMediaItem;
+import com.paritosh.photosmigrator.model.TransferRunResult;
 import com.paritosh.photosmigrator.oauth.GoogleOAuthService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -47,6 +51,7 @@ public class TransferService {
         if (!session.path("mediaItemsSet").asBoolean(false)) {
             throw new IllegalStateException("The Google Photos Picker session is not complete yet");
         }
+
         List<PickedMediaItem> selected = pickerService.listAll(sessionId);
         ledger.initialize(migrationId);
         Map<String, MigrationItem> existing = ledger.items(migrationId).stream()
@@ -56,51 +61,196 @@ public class TransferService {
         String sourceToken = oauth.accessToken(AccountRole.SOURCE);
         String destinationToken = oauth.accessToken(AccountRole.DESTINATION);
         int limit = maxItems <= 0 ? selected.size() : Math.min(maxItems, selected.size());
-        int processed = 0, verified = 0, skipped = 0, failed = 0;
+        int processed = 0;
+        int verified = 0;
+        int skipped = 0;
+        int failed = 0;
+        int waiting = 0;
 
         for (PickedMediaItem picked : selected) {
             if (processed >= limit) break;
+
             MigrationItem previous = existing.get(picked.id());
-            if (previous != null && (previous.status() == MigrationStatus.VERIFIED || previous.status() == MigrationStatus.SKIPPED_DUPLICATE)) {
+            if (previous != null && (previous.status() == MigrationStatus.VERIFIED
+                    || previous.status() == MigrationStatus.SKIPPED_DUPLICATE)) {
                 skipped++;
                 continue;
             }
-            int attempts = previous == null ? 1 : previous.attempts() + 1;
-            if (attempts > maxAttempts) {
-                skipped++;
+
+            if (previous != null
+                    && (previous.status() == MigrationStatus.WAITING_DESTINATION_READY
+                    || previous.status() == MigrationStatus.UPLOADED)
+                    && previous.destinationRef() != null
+                    && !previous.destinationRef().isBlank()) {
+                try {
+                    LibraryUploadClient.DestinationMediaItem destination =
+                            libraryApi.getMediaItem(destinationToken, previous.destinationRef());
+                    String destinationStatus = destination.videoStatus();
+                    if (!picked.isVideo() || "READY".equalsIgnoreCase(destinationStatus)) {
+                        ledger.upsert(migrationId, copyWith(previous, MigrationStatus.VERIFIED, ""));
+                        verified++;
+                    } else if ("FAILED".equalsIgnoreCase(destinationStatus)) {
+                        ledger.upsert(migrationId, copyWith(previous, MigrationStatus.FAILED_RETRYABLE,
+                                "Destination video processing failed in Google Photos; resume to retry the upload"));
+                        failed++;
+                    } else {
+                        ledger.upsert(migrationId, copyWith(previous, MigrationStatus.WAITING_DESTINATION_READY,
+                                "Destination video is still processing in Google Photos"));
+                        waiting++;
+                    }
+                } catch (Exception e) {
+                    ledger.upsert(migrationId, copyWith(previous, MigrationStatus.WAITING_DESTINATION_READY,
+                            "Destination verification will be retried: " + safeMessage(e)));
+                    waiting++;
+                }
                 continue;
             }
-            processed++;
 
             if (!picked.isReady()) {
-                MigrationItem failure = item(picked, -1L, "", MigrationStatus.FAILED_RETRYABLE, attempts, "", "Video is not READY in Google Photos");
-                ledger.upsert(migrationId, failure);
+                int attempts = previous == null ? 0 : previous.attempts();
+                ledger.upsert(migrationId, item(
+                        picked,
+                        previous == null ? -1L : previous.sizeBytes(),
+                        previous == null ? "" : previous.sha256(),
+                        MigrationStatus.WAITING_SOURCE_READY,
+                        attempts,
+                        previous == null ? "" : previous.destinationRef(),
+                        "Source video is still processing in Google Photos"));
+                waiting++;
+                continue;
+            }
+
+            int priorAttempts = previous == null ? 0 : previous.attempts();
+            if (priorAttempts >= maxAttempts) {
+                ledger.upsert(migrationId, item(
+                        picked,
+                        previous == null ? -1L : previous.sizeBytes(),
+                        previous == null ? "" : previous.sha256(),
+                        MigrationStatus.FAILED_FINAL,
+                        priorAttempts,
+                        previous == null ? "" : previous.destinationRef(),
+                        previous == null ? "Maximum upload attempts reached" : previous.error()));
                 failed++;
                 continue;
             }
 
-            ledger.upsert(migrationId, item(picked, -1L, previous == null ? "" : previous.sha256(), MigrationStatus.UPLOADING, attempts, "", ""));
+            int attempts = priorAttempts + 1;
+            processed++;
+            ledger.upsert(migrationId, item(
+                    picked,
+                    -1L,
+                    previous == null ? "" : previous.sha256(),
+                    MigrationStatus.UPLOADING,
+                    attempts,
+                    previous == null ? "" : previous.destinationRef(),
+                    ""));
+
             try (PickerApiClient.MediaDownload download = pickerApi.openMedia(sourceToken, picked.baseUrl(), picked.isVideo())) {
                 MessageDigest digest = MessageDigest.getInstance("SHA-256");
                 try (InputStream digestingStream = new DigestInputStream(download.inputStream(), digest)) {
-                    String uploadToken = libraryApi.uploadStream(destinationToken, picked.mimeType(), digestingStream, download.contentLength());
+                    String uploadToken = libraryApi.uploadStream(
+                            destinationToken,
+                            picked.mimeType(),
+                            digestingStream,
+                            download.contentLength());
                     String sha256 = HexFormat.of().formatHex(digest.digest());
-                    LibraryUploadClient.CreatedMediaItem created = libraryApi.createMediaItem(destinationToken, uploadToken, picked.fileName());
-                    ledger.upsert(migrationId, item(picked, download.contentLength(), sha256, MigrationStatus.VERIFIED, attempts, created.id(), ""));
-                    verified++;
+                    LibraryUploadClient.CreatedMediaItem created =
+                            libraryApi.createMediaItem(destinationToken, uploadToken, picked.fileName());
+
+                    if (!picked.isVideo() || "READY".equalsIgnoreCase(created.videoStatus())) {
+                        ledger.upsert(migrationId, item(
+                                picked,
+                                download.contentLength(),
+                                sha256,
+                                MigrationStatus.VERIFIED,
+                                attempts,
+                                created.id(),
+                                ""));
+                        verified++;
+                    } else if ("FAILED".equalsIgnoreCase(created.videoStatus())) {
+                        ledger.upsert(migrationId, item(
+                                picked,
+                                download.contentLength(),
+                                sha256,
+                                MigrationStatus.FAILED_RETRYABLE,
+                                attempts,
+                                created.id(),
+                                "Destination video processing failed in Google Photos"));
+                        failed++;
+                    } else {
+                        ledger.upsert(migrationId, item(
+                                picked,
+                                download.contentLength(),
+                                sha256,
+                                MigrationStatus.WAITING_DESTINATION_READY,
+                                attempts,
+                                created.id(),
+                                "Destination video is processing in Google Photos"));
+                        waiting++;
+                    }
                 }
             } catch (Exception e) {
-                MigrationStatus status = attempts >= maxAttempts ? MigrationStatus.FAILED_FINAL : MigrationStatus.FAILED_RETRYABLE;
-                ledger.upsert(migrationId, item(picked, previous == null ? -1L : previous.sizeBytes(), previous == null ? "" : previous.sha256(), status, attempts, previous == null ? "" : previous.destinationRef(), safeMessage(e)));
+                MigrationStatus status = attempts >= maxAttempts
+                        ? MigrationStatus.FAILED_FINAL
+                        : MigrationStatus.FAILED_RETRYABLE;
+                ledger.upsert(migrationId, item(
+                        picked,
+                        previous == null ? -1L : previous.sizeBytes(),
+                        previous == null ? "" : previous.sha256(),
+                        status,
+                        attempts,
+                        previous == null ? "" : previous.destinationRef(),
+                        safeMessage(e)));
                 failed++;
             }
         }
-        return new TransferRunResult(migrationId, sessionId, selected.size(), processed, verified, skipped, failed);
+
+        return new TransferRunResult(
+                migrationId,
+                sessionId,
+                selected.size(),
+                processed,
+                verified,
+                skipped,
+                failed,
+                waiting);
     }
 
-    private MigrationItem item(PickedMediaItem picked, long size, String sha, MigrationStatus status, int attempts, String destinationRef, String error) {
-        return new MigrationItem(picked.id(), picked.fileName(), picked.mimeType(), size, sha, status, attempts,
-                picked.id(), destinationRef, Instant.now(), error);
+    private MigrationItem copyWith(MigrationItem previous, MigrationStatus status, String error) {
+        return new MigrationItem(
+                previous.id(),
+                previous.fileName(),
+                previous.mimeType(),
+                previous.sizeBytes(),
+                previous.sha256(),
+                status,
+                previous.attempts(),
+                previous.sourceRef(),
+                previous.destinationRef(),
+                Instant.now(),
+                error);
+    }
+
+    private MigrationItem item(
+            PickedMediaItem picked,
+            long size,
+            String sha,
+            MigrationStatus status,
+            int attempts,
+            String destinationRef,
+            String error) {
+        return new MigrationItem(
+                picked.id(),
+                picked.fileName(),
+                picked.mimeType(),
+                size,
+                sha,
+                status,
+                attempts,
+                picked.id(),
+                destinationRef,
+                Instant.now(),
+                error);
     }
 
     private String safeMessage(Exception e) {

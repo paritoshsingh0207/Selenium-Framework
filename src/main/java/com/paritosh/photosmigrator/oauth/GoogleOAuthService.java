@@ -206,7 +206,7 @@ public class GoogleOAuthService {
     }
 
     private String scopeFor(AccountRole role) {
-        return role == AccountRole.SOURCE ? GooglePhotosEndpoints.PICKER_SCOPE : GooglePhotosEndpoints.LIBRARY_APPEND_SCOPE;
+        return role == AccountRole.SOURCE ? GooglePhotosEndpoints.PICKER_SCOPE : GooglePhotosEndpoints.DESTINATION_SCOPES;
     }
 
     private String required(JsonNode node, String field) {

@@ -47,7 +47,8 @@ jobs:
           region: ${{ vars.GCP_REGION }}
           service: ${{ vars.CLOUD_RUN_SERVICE }}
           source: .
-          timeout: 3600s
+          timeout: 60m
+          flags: '--allow-unauthenticated --concurrency=1 --max-instances=1'
           env_vars: |-
             LEDGER_STORAGE_MODE=gcs
             LEDGER_BUCKET_NAME=${{ vars.LEDGER_BUCKET_NAME }}

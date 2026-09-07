@@ -33,7 +33,7 @@
     </div>
     <div>
       <h2>Account B · Destination</h2>
-      <p class="muted">Append-only Google Photos access.</p>
+      <p class="muted">Append-only access plus read access only to media created by this migrator, used for verification.</p>
       <p id="destinationStatus" class="status">Not connected</p>
       <button id="connectDestination">Connect Account B</button>
     </div>
@@ -47,11 +47,12 @@
   </section>
 
   <section class="card">
-    <h2>2 · Transfer batch</h2>
+    <h2>2 · Transfer safely in batches</h2>
     <div class="form-grid">
       <label>Migration ID<input id="migrationId"></label>
-      <label>Items this batch<input id="batchSize" type="number" min="1" max="100" value="25"></label>
+      <label>Uploads per request<input id="batchSize" type="number" min="1" max="100" value="25"></label>
     </div>
+    <p class="muted">The browser automatically runs short restart-safe requests and pauses if a video is still processing or an item needs attention.</p>
     <div class="row"><button id="transfer">Start / Resume Transfer</button><button id="refreshSummary" class="secondary">Refresh Status</button><button id="downloadReport" class="secondary">Download Excel</button></div>
     <div id="summary" class="summary"></div>
     <pre id="activity">Ready.</pre>

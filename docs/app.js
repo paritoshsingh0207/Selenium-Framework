@@ -10,6 +10,7 @@ $('migrationId').value = localStorage.getItem('photosMigrationId') || `migration
 
 function log(message) { $('activity').textContent = `[${new Date().toLocaleTimeString()}] ${message}\n` + $('activity').textContent; }
 function authHeaders() { return ACCESS_KEY ? {'X-Migrator-Key': ACCESS_KEY} : {}; }
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 async function api(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {headers:{'Content-Type':'application/json', ...authHeaders(), ...(options.headers||{})}, ...options});
   if (!response.ok) {
@@ -73,12 +74,40 @@ async function transfer() {
   if (!migrationId) return log('Migration ID is required.');
   localStorage.setItem('photosMigrationId', migrationId);
   const maxItems = Math.min(100, Math.max(1, Number($('batchSize').value) || 25));
+  const button = $('transfer');
+  button.disabled = true;
   try {
-    log(`Starting batch of up to ${maxItems} items…`);
-    const result = await api(`/api/migrations/${encodeURIComponent(migrationId)}/transfer`, {method:'POST', body:JSON.stringify({sessionId,maxItems})});
-    log(`Batch finished: ${result.verified} verified, ${result.failed} failed, ${result.skipped} skipped.`);
-    await summary();
-  } catch (e) { log(`Transfer: ${e.message}`); }
+    let requestNumber = 0;
+    while (true) {
+      requestNumber++;
+      log(`Starting safe request ${requestNumber}, up to ${maxItems} uploads…`);
+      const result = await api(`/api/migrations/${encodeURIComponent(migrationId)}/transfer`, {
+        method:'POST',
+        body:JSON.stringify({sessionId,maxItems})
+      });
+      const waiting = result.waiting || 0;
+      log(`Request ${requestNumber}: ${result.verified} verified, ${result.failed} failed, ${waiting} waiting, ${result.skipped} already complete.`);
+      await summary();
+
+      if (result.failed > 0) {
+        log('Transfer paused because one or more items failed. Review the Excel/status and press Resume when ready.');
+        break;
+      }
+      if (waiting > 0) {
+        log('Transfer paused while Google Photos finishes processing video(s). Press Resume later; waiting does not consume retry attempts.');
+        break;
+      }
+      if (result.processed === 0) {
+        log('No more transferable items remain in this Picker session. Migration pass is complete.');
+        break;
+      }
+      await sleep(500);
+    }
+  } catch (e) {
+    log(`Transfer: ${e.message}`);
+  } finally {
+    button.disabled = false;
+  }
 }
 async function summary() {
   const migrationId = $('migrationId').value.trim(); if (!migrationId) return;

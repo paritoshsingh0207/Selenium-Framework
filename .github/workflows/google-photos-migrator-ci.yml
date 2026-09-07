@@ -3,6 +3,7 @@ name: Google Photos Migrator CI
 on:
   push:
     branches:
+      - main
       - feature/google-photos-migrator
   pull_request:
     paths:

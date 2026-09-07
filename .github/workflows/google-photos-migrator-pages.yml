@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - feature/google-photos-migrator
+      - main
     paths:
       - 'docs/**'
       - '.github/workflows/google-photos-migrator-pages.yml'
