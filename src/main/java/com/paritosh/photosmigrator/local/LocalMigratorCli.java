@@ -15,7 +15,8 @@ public final class LocalMigratorCli {
     public static boolean isLocalCommand(String[] args) {
         if (args == null || args.length == 0) return false;
         String command = args[0].toLowerCase(Locale.ROOT);
-        return command.equals("inventory") || command.equals("plan") || command.equals("migrate");
+        return command.equals("inventory") || command.equals("plan") || command.equals("migrate")
+                || command.equals("cleanup-plan");
     }
 
     public static int run(String[] args) {
@@ -24,6 +25,7 @@ public final class LocalMigratorCli {
             case "inventory" -> LocalInventoryCli.run(args);
             case "plan" -> runPlan(args);
             case "migrate" -> runMigrate(args);
+            case "cleanup-plan" -> runCleanupPlan(args);
             default -> 2;
         };
     }
@@ -129,6 +131,35 @@ public final class LocalMigratorCli {
         }
     }
 
+    private static int runCleanupPlan(String[] args) {
+        if (hasFlag(args, "--help") || hasFlag(args, "-h")) {
+            printCleanupUsage();
+            return 0;
+        }
+        String ledgerValue = option(args, "--ledger");
+        if (ledgerValue == null || ledgerValue.isBlank()) {
+            System.err.println("cleanup-plan requires --ledger <file.xlsx>");
+            printCleanupUsage();
+            return 2;
+        }
+        try {
+            Path ledger = Path.of(ledgerValue);
+            List<CleanupBatch> batches = new CleanupPlanGenerator().generate(ledger);
+            System.out.println("Cleanup plan updated in: " + ledger.toAbsolutePath().normalize());
+            for (CleanupBatch batch : batches) {
+                System.out.printf("%-14s %6d/%-6d %s%n",
+                        batch.batch(), batch.verified(), batch.expected(), batch.status());
+            }
+            long safe = batches.stream().filter(batch -> "SAFE_TO_DELETE_MANUALLY".equals(batch.status())).count();
+            System.out.println("Safe manual date/year batches: " + safe);
+            System.out.println("The utility does NOT delete Google Photos. Only batches explicitly marked SAFE_TO_DELETE_MANUALLY should be considered for manual cleanup.");
+            return 0;
+        } catch (RuntimeException e) {
+            System.err.println("Cleanup planning failed: " + e.getMessage());
+            return 1;
+        }
+    }
+
     static DestinationPlan parseDestination(String value) {
         int equals = value.lastIndexOf('=');
         if (equals <= 0 || equals == value.length() - 1) {
@@ -210,5 +241,12 @@ public final class LocalMigratorCli {
         System.out.println("  PhotosMigrator.exe migrate --ledger <file.xlsx> --credentials <credentials.json> [--max-items 5]");
         System.out.println();
         System.out.println("Default max-items is 5 for a cautious first run. Google sign-in is local; OAuth tokens are not committed to GitHub.");
+    }
+
+    private static void printCleanupUsage() {
+        System.out.println("Usage:");
+        System.out.println("  PhotosMigrator.exe cleanup-plan --ledger <file.xlsx>");
+        System.out.println();
+        System.out.println("Writes year/date cleanup batches into the Excel ledger. It never deletes photos.");
     }
 }
