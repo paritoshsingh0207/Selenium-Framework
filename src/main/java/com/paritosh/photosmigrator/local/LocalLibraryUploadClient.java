@@ -17,7 +17,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
-public class LocalLibraryUploadClient {
+public class LocalLibraryUploadClient implements MediaTransferClient {
     private static final int DEFAULT_GRANULARITY = 256 * 1024;
     private static final int DEFAULT_CHUNK_BYTES = 8 * 1024 * 1024;
     private static final int MAX_RETRIES = 5;
@@ -55,15 +55,45 @@ public class LocalLibraryUploadClient {
     }
 
     public CreatedMediaItem uploadAndCreate(AccessTokenProvider tokens, TakeoutMediaItem item) {
+        String uploadToken = uploadBytes(tokens, item);
+        return createMediaItem(tokens, uploadToken, item.fileName());
+    }
+
+    @Override
+    public String uploadBytes(AccessTokenProvider tokens, TakeoutMediaItem item) {
         if (item.duplicate()) throw new IllegalArgumentException("Duplicate Takeout entries must not be uploaded: " + item.sourceRef());
         if (item.mimeType() == null || item.mimeType().isBlank()) {
             throw new IllegalArgumentException("Media MIME type is required: " + item.sourceRef());
         }
-        TakeoutEntrySource source = TakeoutEntrySource.from(item);
-        String uploadToken = uploadResumable(tokens, source, item.mimeType());
-        return createMediaItem(tokens, uploadToken, item.fileName());
+        return uploadResumable(tokens, TakeoutEntrySource.from(item), item.mimeType());
     }
 
+    @Override
+    public CreatedMediaItem createMediaItem(AccessTokenProvider tokens, String uploadToken, String fileName) {
+        ObjectNode simple = objectMapper.createObjectNode();
+        simple.put("fileName", fileName);
+        simple.put("uploadToken", uploadToken);
+        ObjectNode item = objectMapper.createObjectNode();
+        item.set("simpleMediaItem", simple);
+        ArrayNode items = objectMapper.createArrayNode().add(item);
+        ObjectNode body = objectMapper.createObjectNode();
+        body.set("newMediaItems", items);
+
+        HttpRequest request = createRequest(tokens.accessToken(), body.toString());
+        HttpResponse<String> response = sendWithAuthRetry(request, tokens,
+                token -> createRequest(token, body.toString()), "Google Photos media creation failed");
+        JsonNode json = parseJson(response.body(), "Google Photos media creation returned invalid JSON");
+        JsonNode result = json.path("newMediaItemResults").path(0);
+        int status = result.path("status").path("code").asInt(0);
+        if (status != 0) throw new IllegalStateException("Google Photos media creation failed: " + result.path("status"));
+        JsonNode media = result.path("mediaItem");
+        String id = media.path("id").asText("");
+        if (id.isBlank()) throw new IllegalStateException("Google Photos did not return a created media item ID");
+        return new CreatedMediaItem(id, media.path("productUrl").asText(""),
+                media.path("mediaMetadata").path("video").path("status").asText(""));
+    }
+
+    @Override
     public DestinationMediaItem verify(AccessTokenProvider tokens, String mediaItemId) {
         HttpRequest request = requestWithAuth(URI.create(mediaItemsEndpoint + "/" + encode(mediaItemId)), tokens.accessToken())
                 .timeout(Duration.ofMinutes(2))
@@ -199,30 +229,6 @@ public class LocalLibraryUploadClient {
                 .build();
     }
 
-    private CreatedMediaItem createMediaItem(AccessTokenProvider tokens, String uploadToken, String fileName) {
-        ObjectNode simple = objectMapper.createObjectNode();
-        simple.put("fileName", fileName);
-        simple.put("uploadToken", uploadToken);
-        ObjectNode item = objectMapper.createObjectNode();
-        item.set("simpleMediaItem", simple);
-        ArrayNode items = objectMapper.createArrayNode().add(item);
-        ObjectNode body = objectMapper.createObjectNode();
-        body.set("newMediaItems", items);
-
-        HttpRequest request = createRequest(tokens.accessToken(), body.toString());
-        HttpResponse<String> response = sendWithAuthRetry(request, tokens,
-                token -> createRequest(token, body.toString()), "Google Photos media creation failed");
-        JsonNode json = parseJson(response.body(), "Google Photos media creation returned invalid JSON");
-        JsonNode result = json.path("newMediaItemResults").path(0);
-        int status = result.path("status").path("code").asInt(0);
-        if (status != 0) throw new IllegalStateException("Google Photos media creation failed: " + result.path("status"));
-        JsonNode media = result.path("mediaItem");
-        String id = media.path("id").asText("");
-        if (id.isBlank()) throw new IllegalStateException("Google Photos did not return a created media item ID");
-        return new CreatedMediaItem(id, media.path("productUrl").asText(""),
-                media.path("mediaMetadata").path("video").path("status").asText(""));
-    }
-
     private HttpRequest createRequest(String token, String body) {
         return requestWithAuth(URI.create(batchCreateEndpoint), token)
                 .timeout(Duration.ofMinutes(2))
@@ -315,7 +321,4 @@ public class LocalLibraryUploadClient {
         RetryableUploadException(String message) { super(message); }
         RetryableUploadException(String message, Throwable cause) { super(message, cause); }
     }
-
-    public record CreatedMediaItem(String id, String productUrl, String videoStatus) { }
-    public record DestinationMediaItem(String id, String mimeType, String videoStatus) { }
 }
