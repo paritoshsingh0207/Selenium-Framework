@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Google Photos Migrator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="shell">
+  <header>
+    <p class="eyebrow">PRIVATE MIGRATION UTILITY</p>
+    <h1>Google Photos Migrator</h1>
+    <p>Move selected media from Account A to Account B with a persistent Excel audit ledger. Source deletion is not implemented.</p>
+  </header>
+
+  <section class="card">
+    <h2>Backend</h2>
+    <div class="form-grid">
+      <label>Cloud Run API URL<input id="apiBase" placeholder="https://your-service.run.app"></label>
+      <label>Private access key<input id="accessKey" type="password" autocomplete="off" placeholder="Not saved permanently"></label>
+    </div>
+    <div class="row"><button id="saveApi">Use connection</button></div>
+    <p id="backendStatus" class="status">Checking…</p>
+  </section>
+
+  <section class="card grid">
+    <div>
+      <h2>Account A · Source</h2>
+      <p class="muted">Picker read access only.</p>
+      <p id="sourceStatus" class="status">Not connected</p>
+      <button id="connectSource">Connect Account A</button>
+    </div>
+    <div>
+      <h2>Account B · Destination</h2>
+      <p class="muted">Append-only access plus read access only to media created by this migrator, used for verification.</p>
+      <p id="destinationStatus" class="status">Not connected</p>
+      <button id="connectDestination">Connect Account B</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>1 · Select media</h2>
+    <p class="muted">Google Picker supports up to 2,000 items in one session.</p>
+    <div class="row"><input id="pickerMax" type="number" min="1" max="2000" value="2000"><button id="startPicker">Open Google Photos Picker</button></div>
+    <p id="pickerStatus" class="status">No active Picker session</p>
+  </section>
+
+  <section class="card">
+    <h2>2 · Transfer safely in batches</h2>
+    <div class="form-grid">
+      <label>Migration ID<input id="migrationId"></label>
+      <label>Uploads per request<input id="batchSize" type="number" min="1" max="100" value="25"></label>
+    </div>
+    <p class="muted">The browser automatically runs short restart-safe requests and pauses if a video is still processing or an item needs attention.</p>
+    <div class="row"><button id="transfer">Start / Resume Transfer</button><button id="refreshSummary" class="secondary">Refresh Status</button><button id="downloadReport" class="secondary">Download Excel</button></div>
+    <div id="summary" class="summary"></div>
+    <pre id="activity">Ready.</pre>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>

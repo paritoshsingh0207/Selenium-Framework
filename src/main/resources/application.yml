@@ -1,0 +1,33 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: google-photos-migrator
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  frontend-origin: ${FRONTEND_ORIGIN:http://localhost:5500}
+  frontend-url: ${FRONTEND_URL:http://localhost:5500}
+  security:
+    access-key: ${APP_ACCESS_KEY:}
+  ledger:
+    storage-mode: ${LEDGER_STORAGE_MODE:local}
+    bucket-name: ${LEDGER_BUCKET_NAME:}
+    object-prefix: ${LEDGER_OBJECT_PREFIX:migrations}
+  google:
+    oauth-client-id: ${GOOGLE_OAUTH_CLIENT_ID:}
+    oauth-client-secret: ${GOOGLE_OAUTH_CLIENT_SECRET:}
+    oauth-redirect-uri: ${GOOGLE_OAUTH_REDIRECT_URI:http://localhost:8080/api/oauth/callback}
+    oauth-state-secret: ${OAUTH_STATE_SECRET:}
+    credential-vault-mode: ${OAUTH_VAULT_MODE:memory}
+    credential-vault-bucket: ${OAUTH_VAULT_BUCKET:${LEDGER_BUCKET_NAME:}}
+    credential-vault-prefix: ${OAUTH_VAULT_PREFIX:oauth}
+    credential-vault-key-base64: ${OAUTH_VAULT_KEY_BASE64:}
+  transfer:
+    max-attempts: ${TRANSFER_MAX_ATTEMPTS:3}
