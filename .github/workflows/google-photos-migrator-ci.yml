@@ -4,15 +4,14 @@ on:
   push:
     branches:
       - main
-      - feature/google-photos-migrator
-      - feature/native-zero-billing-dashboard
+      - feature/local-zero-billing-migrator
   pull_request:
     paths:
       - 'src/**'
       - 'pom.xml'
-      - 'Dockerfile'
       - 'docs/**'
       - '.github/workflows/google-photos-migrator-ci.yml'
+      - '.github/workflows/local-migrator-windows.yml'
 
 permissions:
   contents: read
@@ -25,12 +24,12 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-      - name: Validate zero-billing dashboard JavaScript
+      - name: Validate historical dashboard JavaScript
         run: node --check docs/app.js
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Maven verify legacy Java prototype
+      - name: Maven verify local migrator and regression suite
         run: mvn --batch-mode --update-snapshots verify

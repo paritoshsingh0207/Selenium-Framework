@@ -1,27 +1,39 @@
-# Google Photos Migrator — Zero Billing
+# Google Photos Storage Migrator — Zero Billing
 
-A private Google Photos account-to-account migration orchestrator with a hard **₹0 infrastructure / no billing attachment** requirement.
+A Java utility for evacuating a nearly-full Google Photos account into one or more secondary Google Photos accounts without any paid backend or Google Cloud billing attachment.
 
-## Production architecture
+## Target architecture
 
-The production path no longer transfers media through our own backend. Google Photos performs the copy internally:
+```text
+Google Photos Account A
+        |
+        | Google Takeout ZIP archives
+        v
+Windows Photos Migrator utility
+  - streams ZIP entries without full extraction
+  - SHA-256 inventory and duplicate detection
+  - reads common Google Photos JSON sidecar timestamps
+  - Excel checkpoint / audit ledger
+  - destination allocation by date and capacity
+  - OAuth sign-in for Account B / C / D
+  - Google Photos upload + retry + verification
+        |
+        +--> Account B
+        +--> Account C
+        +--> Account D
+```
 
-- **Whole library:** Google Photos Partner Sharing → Account B → Save to your account.
-- **Selected media:** Google Photos Shared Album → Account B → Save all photos and videos.
-- **Orchestration:** static GitHub Pages dashboard in `docs/`.
-- **Ledger:** browser-local state with dependency-free `.xlsx` and JSON export.
-
-No production OAuth token, photo, video, ledger or secret is sent to this repository or to an application backend.
+The computer is the transfer engine. No photo/video bytes are sent to GitHub or to our own hosted server.
 
 ## Hard zero-billing constraint
 
 Allowed:
 
-- GitHub repository
-- GitHub Actions CI
-- GitHub Pages
-- browser-local storage for migration progress
-- Google Photos' own Partner Sharing and Shared Album features
+- local Windows utility
+- Google Takeout
+- Google Photos API / OAuth where available without a billing attachment
+- GitHub repository and GitHub Actions build/test artifacts
+- local Excel ledger
 
 Not allowed:
 
@@ -29,53 +41,55 @@ Not allowed:
 - Cloud Run
 - Cloud Storage
 - Secret Manager
-- Artifact Registry / Cloud Build deployment
 - Firebase billing
-- paid workers or paid hosted backends
+- paid database or paid worker
+- automatic destructive deletion of the primary library
 
-The earlier Cloud Run path has been retired. `deployment/bootstrap-gcp.sh` is a no-side-effect guard and the Cloud Run workflow is removed.
+The earlier Cloud Run path remains retired. `deployment/bootstrap-gcp.sh` is a no-side-effect guard.
 
-## Dashboard responsibilities
+## Phase 1 — implemented
 
-The GitHub Pages application:
+The local utility now has an `inventory` command that:
 
-- records Account A and Account B identifiers locally;
-- prevents same-account verification;
-- guides whole-library Partner Sharing;
-- creates selected-media migration batch IDs;
-- records source/destination counts and lifecycle state;
-- blocks VERIFIED for a selected batch unless non-zero source/destination counts match;
-- maintains an audit history;
-- exports an Excel workbook with `Summary`, `Items`, `Failures`, `Audit`, and `Config` sheets;
-- keeps source deletion manual and outside the application.
+- discovers Takeout `.zip` files recursively;
+- reads media directly from ZIP streams, so archives do not need to be fully extracted;
+- calculates SHA-256 for supported photo/video entries;
+- detects byte-identical duplicates across archives using SHA-256 + size;
+- reads `photoTakenTime.timestamp` / `creationTime.timestamp` from common Takeout JSON sidecars;
+- writes a local `.xlsx` ledger with `Summary`, `Items`, `Duplicates`, `Failures`, `Destinations`, `Cleanup Plan`, and `Audit` sheets;
+- never uploads or deletes anything during inventory.
 
-The application never proxies or stores media bytes.
+After building the jar:
 
-## Safety rules
+```bash
+java -jar target/google-photos-migrator-0.1.0-SNAPSHOT.jar inventory \
+  --takeout "C:\\Takeout" \
+  --ledger "C:\\Takeout\\photos-migration-ledger.xlsx"
+```
 
-1. Source deletion is not implemented.
-2. Account A and Account B must be different.
-3. Verify the destination before deleting anything from Account A.
-4. Photos/videos must never be committed to GitHub.
-5. No billing account may be attached for this project.
-6. Direct account sharing is preferred over public album links for selected migrations.
-7. Partner Sharing primarily migrates media; arbitrary album organization is not automatically recreated.
+## Safety model
 
-## Legacy Java code
+A source cleanup batch will only be considered `SAFE_TO_DELETE` after all unique media assigned to that batch are uploaded and destination verification succeeds. Source deletion remains an explicit user action.
 
-The Java 21 / Spring Boot API implementation remains in `src/` as an archived engineering prototype with regression tests. It includes Picker API, upload, video-processing and Excel-ledger logic, but it is **not part of the zero-billing production runtime**.
+The utility must never commit OAuth credentials, tokens, Takeout archives, photos/videos, or ledgers to GitHub.
 
-## Current status
+## Development plan
 
-- [x] Java migration prototype and regression tests
-- [x] Billed Cloud Run deployment path retired
-- [x] GitHub Pages enabled
-- [x] Zero-billing native Google Photos architecture defined
-- [x] Browser-only Partner Sharing workflow
-- [x] Browser-only Shared Album batch workflow
-- [x] Browser-local audit ledger
-- [x] Dependency-free `.xlsx` export
-- [ ] Live whole-library workflow acceptance test
-- [ ] Live selected small-batch acceptance test
+- [x] retire billed Cloud Run deployment
+- [x] streaming Takeout ZIP discovery
+- [x] SHA-256 inventory
+- [x] duplicate detection
+- [x] common JSON sidecar timestamp parsing
+- [x] local Excel inventory ledger
+- [x] automated tests for duplicate detection and ledger output
+- [ ] local multi-account OAuth manager
+- [ ] destination account capacity rules
+- [ ] resumable Google Photos upload from Takeout ZIP streams
+- [ ] destination verification and retry/resume
+- [ ] cleanup-batch generator
+- [ ] Windows GUI
+- [ ] self-contained Windows package with bundled Java runtime
+- [ ] 5-photo + 1-video acceptance test
+- [ ] 1 GB acceptance test
 
-See `docs/zero-billing-design.md` for the architecture and `deployment/GOOGLE_CLOUD_SETUP.md` for cleanup information from the retired cloud design.
+The static GitHub Pages dashboard from the previous approach is retained only as historical/prototype material and is not the target migration runtime.
