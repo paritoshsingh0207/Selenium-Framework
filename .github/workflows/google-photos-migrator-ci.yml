@@ -10,7 +10,9 @@ on:
       - 'src/**'
       - 'pom.xml'
       - 'Dockerfile'
+      - 'deployment/**'
       - '.github/workflows/google-photos-migrator-ci.yml'
+      - '.github/workflows/google-photos-migrator-cloudrun.yml'
 
 permissions:
   contents: read
@@ -25,5 +27,7 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+      - name: Validate deployment bootstrap syntax
+        run: bash -n deployment/bootstrap-gcp.sh
       - name: Maven verify
         run: mvn --batch-mode --update-snapshots verify
