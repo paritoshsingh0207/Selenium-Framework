@@ -1,57 +1,73 @@
 # Google Photos Migrator — Java branch
 
-This branch contains a Java-first Google Photos migration application. It intentionally uses **no Selenium/WebDriver**.
+Java-first Google Photos migration application. This branch intentionally uses **no Selenium/WebDriver**.
 
 ## Architecture
 
 - Frontend: static HTML/CSS/JS in `docs/` for GitHub Pages.
 - Backend: Java 21 + Spring Boot.
-- Source access: Google Photos Picker API (`photospicker.mediaitems.readonly`).
-- Destination access: Google Photos Library append-only upload scope.
-- Migration ledger: `.xlsx` workbook using Apache POI.
-- Persistent ledger storage: private Google Cloud Storage bucket in production.
-- Runtime: Google Cloud Run.
+- Source: Google Photos Picker API (`photospicker.mediaitems.readonly`).
+- Destination: Google Photos Library append-only scope.
+- Migration ledger/database: `.xlsx` using Apache POI.
+- Persistent ledger: private Google Cloud Storage object in production.
+- OAuth credentials: separate Source/Destination credentials; AES-256-GCM encrypted GCS vault in production.
+- Runtime target: Google Cloud Run.
 - CI: GitHub Actions.
 
 ## Safety rules
 
 1. Source deletion is not implemented.
-2. OAuth secrets/tokens and Excel ledgers are ignored by Git.
-3. Photos/videos are never committed to GitHub.
-4. Destination permissions are append-only.
-5. The Excel workbook uses generation-aware writes in Cloud Storage to prevent stale overwrites.
+2. Source and destination Google account emails must be different.
+3. OAuth secrets/tokens and Excel ledgers are never committed to GitHub.
+4. Photos/videos are streamed between Google services and are not persisted in GitHub.
+5. Destination permissions remain append-only.
+6. Cloud Storage Excel writes use generation preconditions.
+7. Videos are downloaded only when Picker metadata reports processing status `READY`.
 
-## Local development
+## Development
 
 ```bash
 mvn test
 mvn spring-boot:run
 ```
 
-If `LEDGER_BUCKET_NAME` is unset, the application uses a temporary local ledger only for development. Production must configure a private Cloud Storage bucket.
+Local defaults use an in-memory OAuth vault and temporary local Excel storage. Production should use GCS modes.
 
 ## Production environment variables
 
+- `LEDGER_STORAGE_MODE=gcs`
 - `LEDGER_BUCKET_NAME`
 - `LEDGER_OBJECT_PREFIX` (default `migrations`)
-- `FRONTEND_ORIGIN`
+- `FRONTEND_ORIGIN` (origin only, e.g. `https://paritoshsingh0207.github.io`)
+- `FRONTEND_URL` (full GitHub Pages URL)
 - `GOOGLE_OAUTH_CLIENT_ID`
 - `GOOGLE_OAUTH_CLIENT_SECRET`
 - `GOOGLE_OAUTH_REDIRECT_URI`
+- `OAUTH_VAULT_MODE=gcs`
+- `OAUTH_VAULT_BUCKET` (can be the ledger bucket)
+- `OAUTH_VAULT_PREFIX` (default `oauth`)
+- `OAUTH_VAULT_KEY_BASE64` (exactly 32 random bytes, Base64 encoded; inject from Secret Manager)
+- `TRANSFER_MAX_ATTEMPTS` (default `3`)
 
-## Current implementation milestone
+## Implemented milestone
 
-- [x] Java 21 / Spring Boot skeleton
-- [x] Excel ledger model
+- [x] Java 21 / Spring Boot foundation
+- [x] Excel migration ledger
 - [x] Cloud Storage generation-safe ledger adapter
-- [x] Picker API REST client
-- [x] Library upload REST client
-- [x] SHA-256 utility
-- [x] Static GitHub Pages shell
-- [x] Unit-test and CI scaffolding
-- [ ] Dual-account OAuth flow
-- [ ] Picker-session UI
-- [ ] Transfer coordinator and batching
-- [ ] Retry/resume orchestration
-- [ ] Downloadable Excel report endpoint
+- [x] Separate Account A / Account B OAuth flow
+- [x] Different-account validation by Google email
+- [x] Refresh-token handling
+- [x] AES-GCM encrypted production credential vault
+- [x] Picker session creation, polling and pagination
+- [x] Picker media stream download
+- [x] Streaming destination upload (no whole-file Java byte array)
+- [x] SHA-256 calculated while media streams to destination
+- [x] `UPLOADING`, `VERIFIED`, retryable/final failure ledger states
+- [x] Source-media-ID resume/skip protection
+- [x] Browser migration dashboard
+- [x] Downloadable Excel report
+- [x] GitHub Actions Maven CI
+- [ ] Google Cloud OAuth project configuration
+- [ ] GitHub Pages deployment configuration
 - [ ] Cloud Run deployment pipeline
+- [ ] Live 1-photo / 10-photo migration test

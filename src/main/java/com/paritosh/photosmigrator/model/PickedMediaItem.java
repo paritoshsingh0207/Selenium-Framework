@@ -13,6 +13,6 @@ public record PickedMediaItem(
     }
 
     public boolean isReady() {
-        return !isVideo() || processingStatus == null || processingStatus.isBlank() || "READY".equalsIgnoreCase(processingStatus);
+        return !isVideo() || "READY".equalsIgnoreCase(processingStatus);
     }
 }

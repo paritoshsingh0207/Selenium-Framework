@@ -38,6 +38,14 @@ public class MigrationLedgerService {
         return excel.readItems(storage.load(migrationId).bytes());
     }
 
+    public byte[] workbook(String migrationId) {
+        LedgerSnapshot snapshot = storage.load(migrationId);
+        if (!snapshot.exists()) {
+            throw new IllegalArgumentException("Migration ledger does not exist: " + migrationId);
+        }
+        return snapshot.bytes();
+    }
+
     public Map<MigrationStatus, Long> summary(String migrationId) {
         Map<MigrationStatus, Long> result = new EnumMap<>(MigrationStatus.class);
         for (MigrationItem item : items(migrationId)) {
