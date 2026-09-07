@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Google Photos Migrator</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="shell">
+  <header>
+    <p class="eyebrow">PRIVATE MIGRATION UTILITY</p>
+    <h1>Google Photos Migrator</h1>
+    <p>Move selected Google Photos media from Account A to Account B with an Excel audit ledger.</p>
+  </header>
+
+  <section class="card grid">
+    <div>
+      <h2>Source account</h2>
+      <p class="muted">Google Photos Picker access only.</p>
+      <button id="connectSource" disabled>Connect Account A</button>
+    </div>
+    <div>
+      <h2>Destination account</h2>
+      <p class="muted">Append-only Google Photos access.</p>
+      <button id="connectDestination" disabled>Connect Account B</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Backend status</h2>
+    <div id="backendStatus">Checking…</div>
+  </section>
+
+  <section class="card">
+    <h2>Migration</h2>
+    <p>This first build establishes the Java backend, Excel ledger, Google API clients and deployment surface. OAuth and transfer orchestration are enabled in the next implementation step.</p>
+  </section>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
