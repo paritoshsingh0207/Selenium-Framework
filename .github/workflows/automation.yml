@@ -1,0 +1,63 @@
+name: Hybrid UI Automation
+
+on:
+  workflow_dispatch:
+    inputs:
+      engine:
+        description: Automation engine
+        type: choice
+        options: [selenium, playwright]
+        default: playwright
+      browser:
+        description: Browser
+        type: choice
+        options: [chromium, chrome, firefox, webkit]
+        default: chromium
+      data_source:
+        description: Test data source
+        type: choice
+        options: [feature, excel, both]
+        default: both
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Install Playwright browsers
+        if: ${{ github.event.inputs.engine == 'playwright' || github.event_name != 'workflow_dispatch' }}
+        run: mvn -q -DskipTests compile exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install --with-deps"
+
+      - name: Run tests
+        run: |
+          mvn clean test \
+            -Dengine=${{ github.event.inputs.engine || 'playwright' }} \
+            -Dbrowser=${{ github.event.inputs.browser || 'chromium' }} \
+            -Ddata.source=${{ github.event.inputs.data_source || 'both' }} \
+            -Dheadless=true \
+            -Dthread.count=4 \
+            -Ddataprovider.thread.count=4
+
+      - name: Generate Allure report
+        if: always()
+        run: mvn allure:report
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automation-evidence
+          path: |
+            artifacts/
+            target/reports/
+            target/allure-results/
+            target/site/allure-maven-plugin/

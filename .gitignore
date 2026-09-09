@@ -1,14 +1,8 @@
 target/
+artifacts/
+.allure/
 .idea/
 .vscode/
 *.iml
+*.log
 .DS_Store
-.env
-.env.*
-!*.example
-client_secret*.json
-credentials*.json
-*token*.json
-*.xlsx
-migration-ledgers/
-logs/

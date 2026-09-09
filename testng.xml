@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<suite name="Hybrid UI Automation Suite" verbose="1">
+    <listeners>
+        <listener class-name="com.hybrid.framework.listeners.SuiteConfigurationListener"/>
+        <listener class-name="com.hybrid.framework.listeners.RetryTransformer"/>
+        <listener class-name="com.hybrid.framework.listeners.TestExecutionListener"/>
+        <listener class-name="com.hybrid.framework.listeners.ReportLifecycleListener"/>
+    </listeners>
+
+    <test name="Feature Data Tests">
+        <classes>
+            <class name="com.hybrid.tests.runners.CucumberTestRunner"/>
+        </classes>
+    </test>
+
+    <test name="Excel Data Tests">
+        <classes>
+            <class name="com.hybrid.tests.ExcelLoginTest"/>
+        </classes>
+    </test>
+</suite>
