@@ -10,6 +10,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.testng.IExecutionListener;
 
+import java.nio.file.Path;
+
 public final class ReportLifecycleListener implements IExecutionListener {
     private static final Logger LOGGER = LogManager.getLogger(ReportLifecycleListener.class);
 
@@ -26,7 +28,7 @@ public final class ReportLifecycleListener implements IExecutionListener {
     @Override
     public void onExecutionFinish() {
         if (FrameworkConfig.pdfReportEnabled()) {
-            var path = PdfReportGenerator.generate(ExecutionResultStore.snapshot(), HealingEventStore.snapshot());
+            Path path = PdfReportGenerator.generate(ExecutionResultStore.snapshot(), HealingEventStore.snapshot());
             LOGGER.info("PDF_REPORT_GENERATED path={}", path.toAbsolutePath());
         }
         LOGGER.info("EXECUTION_FINISH");

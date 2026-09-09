@@ -29,13 +29,19 @@ public final class SuiteConfigurationListener implements IAlterSuiteListener {
     }
 
     private XmlSuite.ParallelMode resolve(String value) {
-        return switch (value) {
-            case "none" -> XmlSuite.ParallelMode.NONE;
-            case "methods" -> XmlSuite.ParallelMode.METHODS;
-            case "classes" -> XmlSuite.ParallelMode.CLASSES;
-            case "tests" -> XmlSuite.ParallelMode.TESTS;
-            case "instances" -> XmlSuite.ParallelMode.INSTANCES;
-            default -> throw new IllegalArgumentException("Unsupported parallel mode " + value);
-        };
+        switch (value) {
+            case "none":
+                return XmlSuite.ParallelMode.NONE;
+            case "methods":
+                return XmlSuite.ParallelMode.METHODS;
+            case "classes":
+                return XmlSuite.ParallelMode.CLASSES;
+            case "tests":
+                return XmlSuite.ParallelMode.TESTS;
+            case "instances":
+                return XmlSuite.ParallelMode.INSTANCES;
+            default:
+                throw new IllegalArgumentException("Unsupported parallel mode " + value);
+        }
     }
 }

@@ -6,6 +6,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.InputStream;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
@@ -45,7 +46,7 @@ public final class AllureSupport {
             properties.setProperty("Self Healing", String.valueOf(FrameworkConfig.selfHealingEnabled()));
             properties.setProperty("Operating System", System.getProperty("os.name"));
             properties.setProperty("Java Version", System.getProperty("java.version"));
-            try (var writer = Files.newBufferedWriter(directory.resolve("environment.properties"))) {
+            try (Writer writer = Files.newBufferedWriter(directory.resolve("environment.properties"))) {
                 properties.store(writer, "Hybrid framework environment");
             }
         } catch (Exception exception) {

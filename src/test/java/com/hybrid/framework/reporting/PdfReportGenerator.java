@@ -12,12 +12,14 @@ import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public final class PdfReportGenerator {
     private PdfReportGenerator() {
@@ -51,7 +53,7 @@ public final class PdfReportGenerator {
                 }
 
                 List<ExecutionRecord> failures = finals.stream()
-                        .filter(record -> record.status() == ExecutionStatus.FAILED).toList();
+                        .filter(record -> record.status() == ExecutionStatus.FAILED).collect(Collectors.toList());
                 if (!failures.isEmpty()) {
                     writer.heading("Failures");
                     for (ExecutionRecord failure : failures) {
@@ -59,8 +61,8 @@ public final class PdfReportGenerator {
                         writer.wrapped("Data: " + failure.dataIdentity());
                         writer.wrapped("Message: " + blank(failure.failureMessage()));
                         writer.wrapped("Screenshot: " + blank(failure.screenshotPath()));
-                        if (!failure.screenshotPath().isBlank()) {
-                            writer.image(Path.of(failure.screenshotPath()), 480, 250);
+                        if (!failure.screenshotPath().trim().isEmpty()) {
+                            writer.image(Paths.get(failure.screenshotPath()), 480, 250);
                         }
                     }
                 }
@@ -75,8 +77,8 @@ public final class PdfReportGenerator {
                         writer.wrapped("Original: " + event.originalLocator());
                         writer.wrapped("Healed: " + event.healedLocator());
                         writer.wrapped("URL: " + event.pageUrl());
-                        if (!event.screenshotPath().isBlank()) {
-                            writer.image(Path.of(event.screenshotPath()), 480, 250);
+                        if (!event.screenshotPath().trim().isEmpty()) {
+                            writer.image(Paths.get(event.screenshotPath()), 480, 250);
                         }
                     }
                 }
@@ -102,7 +104,7 @@ public final class PdfReportGenerator {
     }
 
     private static String blank(String value) {
-        return value == null || value.isBlank() ? "<not available>" : value;
+        return value == null || value.trim().isEmpty() ? "<not available>" : value;
     }
 
     private static final class Writer implements AutoCloseable {
@@ -168,14 +170,14 @@ public final class PdfReportGenerator {
             List<String> lines = new ArrayList<>();
             StringBuilder current = new StringBuilder();
             for (String word : value.split("\\s+")) {
-                if (current.length() + word.length() + 1 > maxCharacters && !current.isEmpty()) {
+                if (current.length() + word.length() + 1 > maxCharacters && current.length() > 0) {
                     lines.add(current.toString());
                     current = new StringBuilder();
                 }
-                if (!current.isEmpty()) current.append(' ');
+                if (current.length() > 0) current.append(' ');
                 current.append(word);
             }
-            if (!current.isEmpty()) lines.add(current.toString());
+            if (current.length() > 0) lines.add(current.toString());
             if (lines.isEmpty()) lines.add("");
             return lines;
         }

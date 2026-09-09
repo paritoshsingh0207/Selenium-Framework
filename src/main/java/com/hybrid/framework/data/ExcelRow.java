@@ -1,6 +1,9 @@
 package com.hybrid.framework.data;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -8,8 +11,8 @@ import java.util.Objects;
 import java.util.Set;
 
 public final class ExcelRow {
-    private static final Set<String> TRUE_VALUES = Set.of("true", "yes", "y", "1");
-    private static final Set<String> FALSE_VALUES = Set.of("false", "no", "n", "0");
+    private static final Set<String> TRUE_VALUES = immutableSet("true", "yes", "y", "1");
+    private static final Set<String> FALSE_VALUES = immutableSet("false", "no", "n", "0");
 
     private final String source;
     private final String sheet;
@@ -20,7 +23,11 @@ public final class ExcelRow {
         this.source = Objects.requireNonNull(source);
         this.sheet = Objects.requireNonNull(sheet);
         this.rowNumber = rowNumber;
-        this.values = Map.copyOf(new LinkedHashMap<>(values));
+        this.values = Collections.unmodifiableMap(new LinkedHashMap<String, String>(values));
+    }
+
+    private static Set<String> immutableSet(String... values) {
+        return Collections.unmodifiableSet(new HashSet<String>(Arrays.asList(values)));
     }
 
     public String source() { return source; }
@@ -39,7 +46,7 @@ public final class ExcelRow {
 
     public String getRequiredString(String name) {
         String value = get(name);
-        if (value.isBlank()) {
+        if (value.trim().isEmpty()) {
             throw new ExcelDataException("Missing required column value '" + name + "' at " + sheet + " row " + rowNumber);
         }
         return value;

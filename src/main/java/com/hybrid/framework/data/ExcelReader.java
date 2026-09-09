@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -50,7 +51,7 @@ public final class ExcelReader {
                 for (Map.Entry<Integer, String> header : headers.entrySet()) {
                     Cell cell = row.getCell(header.getKey(), Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
                     String value = cell == null ? "" : formatter.formatCellValue(cell, evaluator).trim();
-                    if (!value.isBlank()) hasData = true;
+                    if (!value.trim().isEmpty()) hasData = true;
                     values.put(header.getValue(), value);
                 }
                 if (hasData) {
@@ -58,7 +59,7 @@ public final class ExcelReader {
                 }
             }
             LOGGER.info("EXCEL_DATA_LOADED source={} sheet={} rows={}", input.description(), sheetName, result.size());
-            return List.copyOf(result);
+            return Collections.unmodifiableList(new ArrayList<ExcelRow>(result));
         } catch (ExcelDataException exception) {
             throw exception;
         } catch (Exception exception) {
@@ -75,7 +76,7 @@ public final class ExcelReader {
         for (int column = 0; column < row.getLastCellNum(); column++) {
             Cell cell = row.getCell(column, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
             String value = cell == null ? "" : formatter.formatCellValue(cell, evaluator).trim();
-            if (value.isBlank()) continue;
+            if (value.trim().isEmpty()) continue;
             if (!normalized.add(value.toLowerCase(Locale.ROOT))) {
                 throw new ExcelDataException("Duplicate Excel header: " + value);
             }
@@ -91,7 +92,7 @@ public final class ExcelReader {
         headers.values().forEach(value -> available.add(value.toLowerCase(Locale.ROOT)));
         List<String> missing = new ArrayList<>();
         for (String value : required) {
-            if (value != null && !value.isBlank() && !available.contains(value.trim().toLowerCase(Locale.ROOT))) {
+            if (value != null && !value.trim().isEmpty() && !available.contains(value.trim().toLowerCase(Locale.ROOT))) {
                 missing.add(value);
             }
         }
@@ -109,8 +110,26 @@ public final class ExcelReader {
         return new ResolvedInput(stream, "classpath:" + resource);
     }
 
-    private record ResolvedInput(InputStream stream, String description) implements AutoCloseable {
+    private static final class ResolvedInput implements AutoCloseable {
+        private final InputStream stream;
+        private final String description;
+
+        private ResolvedInput(InputStream stream, String description) {
+            this.stream = stream;
+            this.description = description;
+        }
+
+        private InputStream stream() {
+            return stream;
+        }
+
+        private String description() {
+            return description;
+        }
+
         @Override
-        public void close() throws Exception { stream.close(); }
+        public void close() throws Exception {
+            stream.close();
+        }
     }
 }

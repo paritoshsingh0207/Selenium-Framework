@@ -8,6 +8,7 @@ import org.testng.ITestResult;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -44,13 +45,16 @@ public final class ExecutionResultStore {
     public static List<ExecutionRecord> snapshot() {
         List<ExecutionRecord> values = new ArrayList<>(RESULTS);
         values.sort(Comparator.comparingLong(ExecutionRecord::startTime));
-        return List.copyOf(values);
+        return Collections.unmodifiableList(values);
     }
 
     private static String parameterIdentity(Object[] parameters) {
         if (parameters == null || parameters.length == 0) return "no-parameters";
         return Arrays.stream(parameters).map(parameter -> {
-            if (parameter instanceof ExcelRow row) return row.executionId();
+            if (parameter instanceof ExcelRow) {
+                ExcelRow row = (ExcelRow) parameter;
+                return row.executionId();
+            }
             return String.valueOf(parameter);
         }).collect(Collectors.joining("|"));
     }

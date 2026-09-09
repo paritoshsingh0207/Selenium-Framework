@@ -11,19 +11,20 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.release>17</maven.compiler.release>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
 
-        <selenium.version>4.45.0</selenium.version>
+        <selenium.version>4.13.0</selenium.version>
         <playwright.version>1.61.0</playwright.version>
-        <testng.version>7.11.0</testng.version>
+        <testng.version>7.5.1</testng.version>
         <cucumber.version>7.20.1</cucumber.version>
-        <allure.version>2.35.3</allure.version>
-        <allure.maven.version>3.0.2</allure.maven.version>
-        <aspectj.version>1.9.25</aspectj.version>
+        <allure.version>2.29.1</allure.version>
+        <allure.maven.version>2.16.1</allure.maven.version>
+        <aspectj.version>1.9.7</aspectj.version>
         <poi.version>5.5.1</poi.version>
         <pdfbox.version>3.0.5</pdfbox.version>
         <log4j.version>2.24.3</log4j.version>
-        <surefire.version>3.5.4</surefire.version>
+        <surefire.version>3.2.5</surefire.version>
     </properties>
 
     <dependencyManagement>
@@ -116,9 +117,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.0</version>
+                <version>3.8.1</version>
                 <configuration>
-                    <release>${maven.compiler.release}</release>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
                 </configuration>
             </plugin>
 

@@ -45,3 +45,10 @@ mvn clean test -Ddata.source=feature -Dengine=selenium -Dbrowser=chrome -Dheadle
 ```
 
 You should see Chrome open the Practice Test Automation login page and execute one successful and two negative login scenarios.
+
+
+## Java 8 conversion
+
+The source is now written using Java 8 language/API constructs. The Maven
+compiler is configured with source/target 1.8. Selenium is pinned to 4.13.0
+and TestNG to 7.5.1 because later releases require newer Java runtimes.

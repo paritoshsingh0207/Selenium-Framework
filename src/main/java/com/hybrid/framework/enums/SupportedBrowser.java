@@ -11,7 +11,7 @@ public enum SupportedBrowser {
     SAFARI;
 
     public static SupportedBrowser from(String value) {
-        String normalized = value == null || value.isBlank() ? "chrome" : value.trim();
+        String normalized = value == null || value.trim().isEmpty() ? "chrome" : value.trim();
         try {
             return valueOf(normalized.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {

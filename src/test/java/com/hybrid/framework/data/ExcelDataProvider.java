@@ -5,13 +5,18 @@ import org.apache.logging.log4j.Logger;
 import org.testng.annotations.DataProvider;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public final class ExcelDataProvider {
     private static final Logger LOGGER = LogManager.getLogger(ExcelDataProvider.class);
-    private static final Set<String> ACTIVE = Set.of("y", "yes", "true", "1", "run");
+    private static final Set<String> ACTIVE = Collections.unmodifiableSet(
+            new HashSet<String>(Arrays.asList("y", "yes", "true", "1", "run")));
 
     private ExcelDataProvider() {
     }
@@ -30,7 +35,7 @@ public final class ExcelDataProvider {
                 String.valueOf(source.filterByRunMode())));
         if (filter) {
             rows = rows.stream().filter(row -> ACTIVE.contains(
-                    row.get(source.runModeColumn()).trim().toLowerCase(Locale.ROOT))).toList();
+                    row.get(source.runModeColumn()).trim().toLowerCase(Locale.ROOT))).collect(Collectors.toList());
         }
         if (rows.isEmpty()) {
             throw new ExcelDataException("No executable Excel rows found for " + method.getName());

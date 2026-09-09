@@ -3,6 +3,7 @@ package com.hybrid.framework.core;
 import com.hybrid.framework.enums.LocatorType;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -18,7 +19,7 @@ public final class UiLocator {
                       boolean healingEnabled) {
         this.name = Objects.requireNonNull(name, "Locator name cannot be null");
         this.primary = Objects.requireNonNull(primary, "Primary locator cannot be null");
-        this.fallbacks = List.copyOf(fallbacks);
+        this.fallbacks = Collections.unmodifiableList(new ArrayList<LocatorCandidate>(fallbacks));
         this.healingEnabled = healingEnabled;
     }
 
@@ -70,11 +71,11 @@ public final class UiLocator {
         LinkedHashSet<LocatorCandidate> values = new LinkedHashSet<>();
         values.add(primary);
         values.addAll(fallbacks);
-        return List.copyOf(values);
+        return Collections.unmodifiableList(new ArrayList<LocatorCandidate>(values));
     }
 
     public UiLocator resolved(LocatorCandidate candidate) {
-        return new UiLocator(name, candidate, List.of(), false);
+        return new UiLocator(name, candidate, Collections.<LocatorCandidate>emptyList(), false);
     }
 
     public boolean isSensitive() {
@@ -98,7 +99,7 @@ public final class UiLocator {
         private boolean healingEnabled = true;
 
         private Builder(String name) {
-            if (name == null || name.isBlank()) {
+            if (name == null || name.trim().isEmpty()) {
                 throw new IllegalArgumentException("Locator name cannot be blank");
             }
             this.name = name;

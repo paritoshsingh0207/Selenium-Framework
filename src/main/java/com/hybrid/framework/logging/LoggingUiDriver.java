@@ -108,7 +108,7 @@ public final class LoggingUiDriver implements UiDriver {
 
     private void execute(String action, String details, Runnable operation) {
         long start = System.nanoTime();
-        String step = details.isBlank() ? action : action + " | " + details;
+        String step = details.trim().isEmpty() ? action : action + " | " + details;
         LOGGER.info("ACTION_START action=\"{}\" engine={} browser={} {}", action, engine, browser, details);
         try {
             Allure.step(step, ignored -> operation.run());
@@ -123,13 +123,18 @@ public final class LoggingUiDriver implements UiDriver {
     private <T> T query(String action, String details, Supplier<T> operation) {
         long start = System.nanoTime();
         AtomicReference<T> value = new AtomicReference<>();
-        String step = details.isBlank() ? action : action + " | " + details;
+        String step = details.trim().isEmpty() ? action : action + " | " + details;
         LOGGER.info("QUERY_START action=\"{}\" engine={} browser={} {}", action, engine, browser, details);
         try {
             Allure.step(step, ignored -> value.set(operation.get()));
             T result = value.get();
-            String safe = result instanceof byte[] bytes ? "byte[" + bytes.length + "]"
-                    : LogSanitizer.text(String.valueOf(result));
+            String safe;
+            if (result instanceof byte[]) {
+                byte[] bytes = (byte[]) result;
+                safe = "byte[" + bytes.length + "]";
+            } else {
+                safe = LogSanitizer.text(String.valueOf(result));
+            }
             LOGGER.info("QUERY_SUCCESS action=\"{}\" durationMs={} result=\"{}\"", action, elapsed(start), safe);
             return result;
         } catch (RuntimeException exception) {

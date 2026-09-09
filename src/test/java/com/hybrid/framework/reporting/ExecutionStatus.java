@@ -6,11 +6,15 @@ public enum ExecutionStatus {
     PASSED, FAILED, SKIPPED, UNKNOWN;
 
     public static ExecutionStatus from(int status) {
-        return switch (status) {
-            case ITestResult.SUCCESS -> PASSED;
-            case ITestResult.FAILURE -> FAILED;
-            case ITestResult.SKIP -> SKIPPED;
-            default -> UNKNOWN;
-        };
+        switch (status) {
+            case ITestResult.SUCCESS:
+                return PASSED;
+            case ITestResult.FAILURE:
+                return FAILED;
+            case ITestResult.SKIP:
+                return SKIPPED;
+            default:
+                return UNKNOWN;
+        }
     }
 }

@@ -7,7 +7,7 @@ public enum AutomationEngine {
     PLAYWRIGHT;
 
     public static AutomationEngine from(String value) {
-        String normalized = value == null || value.isBlank() ? "selenium" : value.trim();
+        String normalized = value == null || value.trim().isEmpty() ? "selenium" : value.trim();
         try {
             return valueOf(normalized.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {

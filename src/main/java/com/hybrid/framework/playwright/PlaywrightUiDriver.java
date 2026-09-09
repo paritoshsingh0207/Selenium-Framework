@@ -32,54 +32,59 @@ public final class PlaywrightUiDriver implements UiDriver {
     }
 
     private Browser launch(SupportedBrowser type, com.microsoft.playwright.BrowserType.LaunchOptions options) {
-        return switch (type) {
-            case CHROMIUM -> playwright.chromium().launch(options);
-            case CHROME -> playwright.chromium().launch(options.setChannel("chrome"));
-            case EDGE -> playwright.chromium().launch(options.setChannel("msedge"));
-            case FIREFOX -> playwright.firefox().launch(options);
-            case WEBKIT -> playwright.webkit().launch(options);
-            default -> throw new IllegalArgumentException("Unsupported Playwright browser: " + type);
-        };
+        switch (type) {
+            case CHROMIUM:
+                return playwright.chromium().launch(options);
+            case CHROME:
+                return playwright.chromium().launch(options.setChannel("chrome"));
+            case EDGE:
+                return playwright.chromium().launch(options.setChannel("msedge"));
+            case FIREFOX:
+                return playwright.firefox().launch(options);
+            case WEBKIT:
+                return playwright.webkit().launch(options);
+            default:
+                throw new IllegalArgumentException("Unsupported Playwright browser: " + type);
+        }
     }
 
     private Locator convert(UiLocator locator) {
-        return switch (locator.type()) {
-            case CSS -> page.locator(locator.value());
-            case XPATH -> page.locator("xpath=" + locator.value());
-            case ID -> page.locator("#" + cssEscape(locator.value()));
-            case NAME -> page.locator("[name=" + cssQuoted(locator.value()) + "]");
-            case TEST_ID -> page.locator("[data-test=" + cssQuoted(locator.value()) + "],"
-                    + "[data-testid=" + cssQuoted(locator.value()) + "]");
-            case TEXT -> page.getByText(locator.value(), new Page.GetByTextOptions().setExact(true));
-            case ROLE -> page.getByRole(toAriaRole(locator.value()),
-                    new Page.GetByRoleOptions().setName(locator.accessibleName()).setExact(true));
-        };
+        switch (locator.type()) {
+            case CSS:
+                return page.locator(locator.value());
+            case XPATH:
+                return page.locator("xpath=" + locator.value());
+            case ID:
+                return page.locator("#" + cssEscape(locator.value()));
+            case NAME:
+                return page.locator("[name=" + cssQuoted(locator.value()) + "]");
+            case TEST_ID:
+                return page.locator("[data-test=" + cssQuoted(locator.value()) + "],"
+                        + "[data-testid=" + cssQuoted(locator.value()) + "]");
+            case TEXT:
+                return page.getByText(locator.value(), new Page.GetByTextOptions().setExact(true));
+            case ROLE:
+                return page.getByRole(toAriaRole(locator.value()),
+                        new Page.GetByRoleOptions().setName(locator.accessibleName()).setExact(true));
+            default:
+                throw new IllegalArgumentException("Unsupported locator type: " + locator.type());
+        }
     }
 
     @Override
-    public void navigate(String url) {
-        page.navigate(url);
-    }
+    public void navigate(String url) { page.navigate(url); }
 
     @Override
-    public void click(UiLocator locator) {
-        convert(locator).click();
-    }
+    public void click(UiLocator locator) { convert(locator).click(); }
 
     @Override
-    public void fill(UiLocator locator, String value) {
-        convert(locator).fill(value);
-    }
+    public void fill(UiLocator locator, String value) { convert(locator).fill(value); }
 
     @Override
-    public void clear(UiLocator locator) {
-        convert(locator).clear();
-    }
+    public void clear(UiLocator locator) { convert(locator).clear(); }
 
     @Override
-    public String getText(UiLocator locator) {
-        return convert(locator).innerText();
-    }
+    public String getText(UiLocator locator) { return convert(locator).innerText(); }
 
     @Override
     public String getAttribute(UiLocator locator, String attributeName) {
@@ -87,14 +92,10 @@ public final class PlaywrightUiDriver implements UiDriver {
     }
 
     @Override
-    public boolean isVisible(UiLocator locator) {
-        return convert(locator).isVisible();
-    }
+    public boolean isVisible(UiLocator locator) { return convert(locator).isVisible(); }
 
     @Override
-    public boolean isEnabled(UiLocator locator) {
-        return convert(locator).isEnabled();
-    }
+    public boolean isEnabled(UiLocator locator) { return convert(locator).isEnabled(); }
 
     @Override
     public void waitForVisible(UiLocator locator) {
@@ -102,24 +103,16 @@ public final class PlaywrightUiDriver implements UiDriver {
     }
 
     @Override
-    public void selectByValue(UiLocator locator, String value) {
-        convert(locator).selectOption(value);
-    }
+    public void selectByValue(UiLocator locator, String value) { convert(locator).selectOption(value); }
 
     @Override
-    public void press(UiLocator locator, String key) {
-        convert(locator).press(key);
-    }
+    public void press(UiLocator locator, String key) { convert(locator).press(key); }
 
     @Override
-    public String getTitle() {
-        return page.title();
-    }
+    public String getTitle() { return page.title(); }
 
     @Override
-    public String getCurrentUrl() {
-        return page.url();
-    }
+    public String getCurrentUrl() { return page.url(); }
 
     @Override
     public byte[] takeScreenshot() {

@@ -6,12 +6,15 @@ import com.hybrid.framework.enums.SupportedBrowser;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
 
 public final class FrameworkConfig {
-    private static final Set<String> DATA_SOURCES = Set.of("feature", "excel", "both");
-    private static final Set<String> PARALLEL_MODES = Set.of("none", "methods", "classes", "tests", "instances");
+    private static final Set<String> DATA_SOURCES = immutableSet("feature", "excel", "both");
+    private static final Set<String> PARALLEL_MODES = immutableSet("none", "methods", "classes", "tests", "instances");
 
     private FrameworkConfig() {
     }
@@ -106,6 +109,10 @@ public final class FrameworkConfig {
 
     public static Path allureResultsDirectory() {
         return Paths.get(System.getProperty("allure.results.directory", "target/allure-results"));
+    }
+
+    private static Set<String> immutableSet(String... values) {
+        return Collections.unmodifiableSet(new HashSet<String>(Arrays.asList(values)));
     }
 
     private static int positiveInt(String name, int defaultValue) {

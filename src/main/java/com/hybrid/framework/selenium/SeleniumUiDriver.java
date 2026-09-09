@@ -34,39 +34,49 @@ public final class SeleniumUiDriver implements UiDriver {
     }
 
     private WebDriver createDriver(SupportedBrowser browser, boolean headless) {
-        return switch (browser) {
-            case CHROME -> SeleniumBrowserOptions.chrome(headless);
-            case EDGE -> SeleniumBrowserOptions.edge(headless);
-            case FIREFOX -> SeleniumBrowserOptions.firefox(headless);
-            case SAFARI -> {
+        switch (browser) {
+            case CHROME:
+                return SeleniumBrowserOptions.chrome(headless);
+            case EDGE:
+                return SeleniumBrowserOptions.edge(headless);
+            case FIREFOX:
+                return SeleniumBrowserOptions.firefox(headless);
+            case SAFARI:
                 if (headless) {
                     throw new IllegalArgumentException("Safari does not support this headless configuration");
                 }
-                yield new SafariDriver();
-            }
-            default -> throw new IllegalArgumentException("Unsupported Selenium browser: " + browser);
-        };
+                return new SafariDriver();
+            default:
+                throw new IllegalArgumentException("Unsupported Selenium browser: " + browser);
+        }
     }
 
     private By convert(UiLocator locator) {
-        return switch (locator.type()) {
-            case CSS -> By.cssSelector(locator.value());
-            case XPATH -> By.xpath(locator.value());
-            case ID -> By.id(locator.value());
-            case NAME -> By.name(locator.value());
-            case TEST_ID -> By.cssSelector("[data-test=" + cssQuoted(locator.value()) + "],"
-                    + "[data-testid=" + cssQuoted(locator.value()) + "]");
-            case TEXT -> By.xpath("//*[normalize-space()=" + xpathLiteral(locator.value()) + "]");
-            case ROLE -> By.xpath("//*[@role=" + xpathLiteral(locator.value()) + " and ("
-                    + "@aria-label=" + xpathLiteral(locator.accessibleName())
-                    + " or normalize-space(.)=" + xpathLiteral(locator.accessibleName()) + ")]");
-        };
+        switch (locator.type()) {
+            case CSS:
+                return By.cssSelector(locator.value());
+            case XPATH:
+                return By.xpath(locator.value());
+            case ID:
+                return By.id(locator.value());
+            case NAME:
+                return By.name(locator.value());
+            case TEST_ID:
+                return By.cssSelector("[data-test=" + cssQuoted(locator.value()) + "],"
+                        + "[data-testid=" + cssQuoted(locator.value()) + "]");
+            case TEXT:
+                return By.xpath("//*[normalize-space()=" + xpathLiteral(locator.value()) + "]");
+            case ROLE:
+                return By.xpath("//*[@role=" + xpathLiteral(locator.value()) + " and ("
+                        + "@aria-label=" + xpathLiteral(locator.accessibleName())
+                        + " or normalize-space(.)=" + xpathLiteral(locator.accessibleName()) + ")]");
+            default:
+                throw new IllegalArgumentException("Unsupported locator type: " + locator.type());
+        }
     }
 
     @Override
-    public void navigate(String url) {
-        driver.get(url);
-    }
+    public void navigate(String url) { driver.get(url); }
 
     @Override
     public void click(UiLocator locator) {
@@ -92,8 +102,7 @@ public final class SeleniumUiDriver implements UiDriver {
 
     @Override
     public String getAttribute(UiLocator locator, String attributeName) {
-        return wait.until(ExpectedConditions.presenceOfElementLocated(convert(locator)))
-                .getAttribute(attributeName);
+        return wait.until(ExpectedConditions.presenceOfElementLocated(convert(locator))).getAttribute(attributeName);
     }
 
     @Override
@@ -115,8 +124,7 @@ public final class SeleniumUiDriver implements UiDriver {
 
     @Override
     public void selectByValue(UiLocator locator, String value) {
-        new Select(wait.until(ExpectedConditions.elementToBeClickable(convert(locator))))
-                .selectByValue(value);
+        new Select(wait.until(ExpectedConditions.elementToBeClickable(convert(locator)))).selectByValue(value);
     }
 
     @Override
@@ -126,14 +134,10 @@ public final class SeleniumUiDriver implements UiDriver {
     }
 
     @Override
-    public String getTitle() {
-        return driver.getTitle();
-    }
+    public String getTitle() { return driver.getTitle(); }
 
     @Override
-    public String getCurrentUrl() {
-        return driver.getCurrentUrl();
-    }
+    public String getCurrentUrl() { return driver.getCurrentUrl(); }
 
     @Override
     public byte[] takeScreenshot() {
@@ -153,9 +157,7 @@ public final class SeleniumUiDriver implements UiDriver {
     }
 
     @Override
-    public void close() {
-        driver.quit();
-    }
+    public void close() { driver.quit(); }
 
     private String cssQuoted(String value) {
         return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";

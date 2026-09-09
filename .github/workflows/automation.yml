@@ -19,7 +19,7 @@ on:
         options: [feature, excel, both]
         default: both
   push:
-    branches: [main]
+    branches: [main, hybrid-selenium-playwright-framework]
   pull_request:
 
 jobs:
@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '8'
           cache: maven
 
       - name: Install Playwright browsers

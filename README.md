@@ -1,6 +1,6 @@
 # Hybrid Selenium + Playwright Automation Framework
 
-A Java 17 Maven framework where the same test flow can run with **Selenium** or **Playwright**, and test data can come from either a **Cucumber feature file** or **Excel**.
+A Java 8 Maven framework where the same test flow can run with **Selenium** or **Playwright**, and test data can come from either a **Cucumber feature file** or **Excel**.
 
 The working sample targets:
 
@@ -43,7 +43,7 @@ The actual step definitions are here:
 
 ## Prerequisites
 
-- JDK 17+
+- JDK 8+
 - Maven 3.9+
 - Chrome / Edge / Firefox installed for Selenium runs
 - Playwright browser binaries installed before Playwright runs
@@ -214,3 +214,13 @@ mvn allure:serve
 Do not keep real production credentials in Excel or feature files. Use environment variables or your CI/CD secret store for sensitive values.
 
 See `docs/HOW_IT_WORKS.md` for the execution flow and where new application code should go.
+
+
+## Java 8 compatibility
+
+This branch targets JDK 1.8. Selenium is intentionally pinned to 4.13.0,
+the final Selenium release that supports Java 8. TestNG is pinned to 7.5.1
+for the same reason. Cucumber 7.20.1, Playwright Java, Apache POI, PDFBox
+and Log4j remain Java-8 compatible. Newer Java syntax such as records,
+switch expressions, `String.isBlank()`, `List.of()` and `Stream.toList()`
+is not used in the source.

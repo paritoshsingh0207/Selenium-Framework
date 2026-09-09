@@ -1,6 +1,7 @@
 package com.hybrid.framework.healing;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -15,7 +16,7 @@ public final class HealingEventStore {
     }
 
     public static List<HealingEvent> snapshot() {
-        return List.copyOf(new ArrayList<>(EVENTS));
+        return Collections.unmodifiableList(new ArrayList<HealingEvent>(EVENTS));
     }
 
     public static void clear() {

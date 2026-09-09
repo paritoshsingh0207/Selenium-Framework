@@ -17,10 +17,21 @@ public final class UiDriverFactory {
     public static UiDriver create(AutomationEngine engine, SupportedBrowser browser,
                                   boolean headless, Duration timeout) {
         BrowserCompatibilityValidator.validate(engine, browser);
-        UiDriver raw = switch (engine) {
-            case SELENIUM -> new SeleniumUiDriver(browser, headless, timeout);
-            case PLAYWRIGHT -> new PlaywrightUiDriver(browser, headless, timeout);
-        };
+
+        UiDriver raw;
+        switch (engine) {
+            case SELENIUM:
+                raw = new SeleniumUiDriver(browser, headless, timeout);
+                break;
+            case PLAYWRIGHT:
+                raw = new PlaywrightUiDriver(browser, headless, timeout);
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported automation engine: " + engine);
+        }
+
+        // Decorators are layered once here so test/page code stays unaware of
+        // logging and healing implementation details.
         UiDriver healing = new HealingUiDriver(raw, engine.name(), browser.name());
         return new LoggingUiDriver(healing, engine.name(), browser.name());
     }
