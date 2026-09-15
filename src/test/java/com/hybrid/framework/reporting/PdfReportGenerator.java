@@ -28,8 +28,10 @@ public final class PdfReportGenerator {
     public static Path generate(List<ExecutionRecord> attempts, List<HealingEvent> healingEvents) {
         Path output = FrameworkConfig.pdfReportPath();
         try {
+            // Create the parent folder before PDFBox tries to write the report file.
             Files.createDirectories(output.toAbsolutePath().getParent());
             List<ExecutionRecord> finals = finalResults(attempts);
+
             try (PDDocument document = new PDDocument(); Writer writer = new Writer(document)) {
                 writer.title("Hybrid UI Automation Report");
                 writer.line("Generated: " + Instant.now());
@@ -88,7 +90,17 @@ public final class PdfReportGenerator {
                     writer.wrapped(attempt.status() + " | " + attempt.testName() + " | attempt " + attempt.attempt()
                             + " | " + attempt.engine() + "/" + attempt.browser() + " | " + attempt.threadName());
                 }
+
+                // PDFBox keeps the document in memory until save() is called.
+                // Closing the document alone does not create the PDF file on disk.
+                document.save(output.toFile());
             }
+
+            // Do not report success unless a real, non-empty file was written.
+            if (!Files.exists(output) || Files.size(output) == 0L) {
+                throw new IllegalStateException("PDF report was not written correctly: " + output.toAbsolutePath());
+            }
+
             return output;
         } catch (Exception exception) {
             throw new IllegalStateException("Unable to generate PDF report", exception);
