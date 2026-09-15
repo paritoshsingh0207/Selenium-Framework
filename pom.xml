@@ -10,17 +10,18 @@
     <description>Java framework supporting Selenium, Playwright, Cucumber feature data, Excel data, retries, parallelism, Allure, PDF reports and controlled self-healing.</description>
 
     <properties>
+        <!-- Keep source and target at Java 8 because the framework is intended to run on JDK 8+. -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
+        <!-- Library versions live here so upgrades can be done from one place. -->
         <selenium.version>4.13.0</selenium.version>
         <playwright.version>1.61.0</playwright.version>
         <testng.version>7.5.1</testng.version>
         <cucumber.version>7.20.1</cucumber.version>
         <allure.version>2.29.1</allure.version>
         <allure.maven.version>2.16.1</allure.maven.version>
-        <aspectj.version>1.9.7</aspectj.version>
         <poi.version>5.5.1</poi.version>
         <pdfbox.version>3.0.5</pdfbox.version>
         <log4j.version>2.24.3</log4j.version>
@@ -29,6 +30,7 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- Allure BOM keeps the Allure modules on compatible versions. -->
             <dependency>
                 <groupId>io.qameta.allure</groupId>
                 <artifactId>allure-bom</artifactId>
@@ -40,6 +42,7 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- Browser automation engines. Tests use the common UiDriver abstraction above these libraries. -->
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
             <artifactId>selenium-java</artifactId>
@@ -52,6 +55,7 @@
             <version>${playwright.version}</version>
         </dependency>
 
+        <!-- Execution logging. -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-api</artifactId>
@@ -63,23 +67,27 @@
             <version>${log4j.version}</version>
         </dependency>
 
+        <!-- Apache POI reads Excel-based test data. -->
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
             <version>${poi.version}</version>
         </dependency>
 
+        <!-- PDFBox creates the framework's standalone PDF execution report. -->
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
             <version>${pdfbox.version}</version>
         </dependency>
 
+        <!-- Allure attachments and environment details are added directly from framework code. -->
         <dependency>
             <groupId>io.qameta.allure</groupId>
             <artifactId>allure-java-commons</artifactId>
         </dependency>
 
+        <!-- TestNG is the execution engine used by both normal tests and the Cucumber runner. -->
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
@@ -87,6 +95,7 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Cucumber provides feature files and the TestNG bridge. -->
         <dependency>
             <groupId>io.cucumber</groupId>
             <artifactId>cucumber-java</artifactId>
@@ -100,6 +109,7 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- These adapters publish TestNG and Cucumber execution data to Allure. -->
         <dependency>
             <groupId>io.qameta.allure</groupId>
             <artifactId>allure-testng</artifactId>
@@ -114,6 +124,7 @@
 
     <build>
         <plugins>
+            <!-- Compile the project using the Java version declared in the properties section. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -124,29 +135,28 @@
                 </configuration>
             </plugin>
 
+            <!-- Surefire starts TestNG and points it to our suite file. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire.version}</version>
                 <configuration>
+                    <!-- The suite contains both feature-file and Excel test entry points. -->
                     <suiteXmlFiles>
                         <suiteXmlFile>testng.xml</suiteXmlFile>
                     </suiteXmlFiles>
-                    <argLine>-javaagent:"${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar"</argLine>
+
+                    <!-- Keep encoding consistent on developer machines and CI. -->
                     <systemPropertyVariables>
                         <file.encoding>UTF-8</file.encoding>
                     </systemPropertyVariables>
+
+                    <!-- Full stack traces are useful when an automation failure needs debugging. -->
                     <trimStackTrace>false</trimStackTrace>
                 </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.aspectj</groupId>
-                        <artifactId>aspectjweaver</artifactId>
-                        <version>${aspectj.version}</version>
-                    </dependency>
-                </dependencies>
             </plugin>
 
+            <!-- Generates the Allure HTML report from the results produced during test execution. -->
             <plugin>
                 <groupId>io.qameta.allure</groupId>
                 <artifactId>allure-maven</artifactId>
