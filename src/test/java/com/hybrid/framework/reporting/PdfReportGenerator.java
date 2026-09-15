@@ -32,67 +32,73 @@ public final class PdfReportGenerator {
             Files.createDirectories(output.toAbsolutePath().getParent());
             List<ExecutionRecord> finals = finalResults(attempts);
 
-            try (PDDocument document = new PDDocument(); Writer writer = new Writer(document)) {
-                writer.title("Hybrid UI Automation Report");
-                writer.line("Generated: " + Instant.now());
-                writer.line("Engine/browser: " + FrameworkConfig.engine() + "/" + FrameworkConfig.browser());
-                writer.line("Data source: " + FrameworkConfig.dataSource());
-                writer.line("Parallel: " + FrameworkConfig.parallelMode() + " / threads " + FrameworkConfig.threadCount());
-                writer.line("Self-healing: " + FrameworkConfig.selfHealingEnabled());
+            try (PDDocument document = new PDDocument()) {
+                /*
+                 * Keep Writer in its own try block. Writer owns the current
+                 * PDPageContentStream, and PDFBox requires that stream to be
+                 * closed before PDDocument.save(...) is called.
+                 */
+                try (Writer writer = new Writer(document)) {
+                    writer.title("Hybrid UI Automation Report");
+                    writer.line("Generated: " + Instant.now());
+                    writer.line("Engine/browser: " + FrameworkConfig.engine() + "/" + FrameworkConfig.browser());
+                    writer.line("Data source: " + FrameworkConfig.dataSource());
+                    writer.line("Parallel: " + FrameworkConfig.parallelMode() + " / threads " + FrameworkConfig.threadCount());
+                    writer.line("Self-healing: " + FrameworkConfig.selfHealingEnabled());
 
-                writer.heading("Summary");
-                writer.line("Final tests: " + finals.size());
-                writer.line("Passed: " + finals.stream().filter(r -> r.status() == ExecutionStatus.PASSED).count());
-                writer.line("Failed: " + finals.stream().filter(r -> r.status() == ExecutionStatus.FAILED).count());
-                writer.line("Skipped: " + finals.stream().filter(r -> r.status() == ExecutionStatus.SKIPPED).count());
-                writer.line("Additional attempts: " + Math.max(0, attempts.size() - finals.size()));
-                writer.line("Healing events: " + healingEvents.size());
+                    writer.heading("Summary");
+                    writer.line("Final tests: " + finals.size());
+                    writer.line("Passed: " + finals.stream().filter(r -> r.status() == ExecutionStatus.PASSED).count());
+                    writer.line("Failed: " + finals.stream().filter(r -> r.status() == ExecutionStatus.FAILED).count());
+                    writer.line("Skipped: " + finals.stream().filter(r -> r.status() == ExecutionStatus.SKIPPED).count());
+                    writer.line("Additional attempts: " + Math.max(0, attempts.size() - finals.size()));
+                    writer.line("Healing events: " + healingEvents.size());
 
-                writer.heading("Final results");
-                for (ExecutionRecord record : finals) {
-                    writer.wrapped(record.status() + " | " + record.testName() + " | " + record.dataIdentity()
-                            + " | attempt " + record.attempt() + " | " + record.durationMs() + " ms");
-                }
+                    writer.heading("Final results");
+                    for (ExecutionRecord record : finals) {
+                        writer.wrapped(record.status() + " | " + record.testName() + " | " + record.dataIdentity()
+                                + " | attempt " + record.attempt() + " | " + record.durationMs() + " ms");
+                    }
 
-                List<ExecutionRecord> failures = finals.stream()
-                        .filter(record -> record.status() == ExecutionStatus.FAILED).collect(Collectors.toList());
-                if (!failures.isEmpty()) {
-                    writer.heading("Failures");
-                    for (ExecutionRecord failure : failures) {
-                        writer.subHeading(failure.testName());
-                        writer.wrapped("Data: " + failure.dataIdentity());
-                        writer.wrapped("Message: " + blank(failure.failureMessage()));
-                        writer.wrapped("Screenshot: " + blank(failure.screenshotPath()));
-                        if (!failure.screenshotPath().trim().isEmpty()) {
-                            writer.image(Paths.get(failure.screenshotPath()), 480, 250);
+                    List<ExecutionRecord> failures = finals.stream()
+                            .filter(record -> record.status() == ExecutionStatus.FAILED).collect(Collectors.toList());
+                    if (!failures.isEmpty()) {
+                        writer.heading("Failures");
+                        for (ExecutionRecord failure : failures) {
+                            writer.subHeading(failure.testName());
+                            writer.wrapped("Data: " + failure.dataIdentity());
+                            writer.wrapped("Message: " + blank(failure.failureMessage()));
+                            writer.wrapped("Screenshot: " + blank(failure.screenshotPath()));
+                            if (!failure.screenshotPath().trim().isEmpty()) {
+                                writer.image(Paths.get(failure.screenshotPath()), 480, 250);
+                            }
                         }
+                    }
+
+                    writer.heading("Self-healing events");
+                    if (healingEvents.isEmpty()) {
+                        writer.line("No healing was required.");
+                    } else {
+                        for (HealingEvent event : healingEvents) {
+                            writer.subHeading(event.locatorName());
+                            writer.wrapped("Action: " + event.action());
+                            writer.wrapped("Original: " + event.originalLocator());
+                            writer.wrapped("Healed: " + event.healedLocator());
+                            writer.wrapped("URL: " + event.pageUrl());
+                            if (!event.screenshotPath().trim().isEmpty()) {
+                                writer.image(Paths.get(event.screenshotPath()), 480, 250);
+                            }
+                        }
+                    }
+
+                    writer.heading("All attempts");
+                    for (ExecutionRecord attempt : attempts) {
+                        writer.wrapped(attempt.status() + " | " + attempt.testName() + " | attempt " + attempt.attempt()
+                                + " | " + attempt.engine() + "/" + attempt.browser() + " | " + attempt.threadName());
                     }
                 }
 
-                writer.heading("Self-healing events");
-                if (healingEvents.isEmpty()) {
-                    writer.line("No healing was required.");
-                } else {
-                    for (HealingEvent event : healingEvents) {
-                        writer.subHeading(event.locatorName());
-                        writer.wrapped("Action: " + event.action());
-                        writer.wrapped("Original: " + event.originalLocator());
-                        writer.wrapped("Healed: " + event.healedLocator());
-                        writer.wrapped("URL: " + event.pageUrl());
-                        if (!event.screenshotPath().trim().isEmpty()) {
-                            writer.image(Paths.get(event.screenshotPath()), 480, 250);
-                        }
-                    }
-                }
-
-                writer.heading("All attempts");
-                for (ExecutionRecord attempt : attempts) {
-                    writer.wrapped(attempt.status() + " | " + attempt.testName() + " | attempt " + attempt.attempt()
-                            + " | " + attempt.engine() + "/" + attempt.browser() + " | " + attempt.threadName());
-                }
-
-                // PDFBox keeps the document in memory until save() is called.
-                // Closing the document alone does not create the PDF file on disk.
+                // Writer is closed at this point, so all page content streams are closed too.
                 document.save(output.toFile());
             }
 
