@@ -30,7 +30,7 @@
 
     <dependencyManagement>
         <dependencies>
-            <!-- Allure BOM keeps the Allure modules on compatible versions. -->
+            <!-- Allure BOM keeps all Allure modules on mutually compatible versions. -->
             <dependency>
                 <groupId>io.qameta.allure</groupId>
                 <artifactId>allure-bom</artifactId>
@@ -81,7 +81,10 @@
             <version>${pdfbox.version}</version>
         </dependency>
 
-        <!-- Allure attachments and environment details are added directly from framework code. -->
+        <!--
+            Common Allure API used directly by framework utilities.
+            For example, AllureSupport uses this for screenshots, text attachments and environment data.
+        -->
         <dependency>
             <groupId>io.qameta.allure</groupId>
             <artifactId>allure-java-commons</artifactId>
@@ -109,12 +112,18 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- These adapters publish TestNG and Cucumber execution data to Allure. -->
+        <!-- Publishes TestNG test lifecycle and results to Allure. -->
         <dependency>
             <groupId>io.qameta.allure</groupId>
             <artifactId>allure-testng</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!--
+            Publishes Cucumber 7 scenarios and steps to Allure.
+            CucumberTestRunner references io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm,
+            so this dependency must be present on the test classpath.
+        -->
         <dependency>
             <groupId>io.qameta.allure</groupId>
             <artifactId>allure-cucumber7-jvm</artifactId>
