@@ -155,9 +155,15 @@
                         <suiteXmlFile>testng.xml</suiteXmlFile>
                     </suiteXmlFiles>
 
-                    <!-- Keep encoding consistent on developer machines and CI. -->
                     <systemPropertyVariables>
+                        <!-- Keep encoding consistent on developer machines and CI. -->
                         <file.encoding>UTF-8</file.encoding>
+
+                        <!--
+                            Force every Allure adapter inside the forked test JVM to write to the
+                            same folder that the Maven Allure plugin reads afterwards.
+                        -->
+                        <allure.results.directory>${project.build.directory}/allure-results</allure.results.directory>
                     </systemPropertyVariables>
 
                     <!-- Full stack traces are useful when an automation failure needs debugging. -->
@@ -165,11 +171,14 @@
                 </configuration>
             </plugin>
 
-            <!-- Generates the Allure HTML report from the results produced during test execution. -->
+            <!-- Generates the Allure HTML report from target/allure-results after test execution. -->
             <plugin>
                 <groupId>io.qameta.allure</groupId>
                 <artifactId>allure-maven</artifactId>
                 <version>${allure.maven.version}</version>
+                <configuration>
+                    <resultsDirectory>${project.build.directory}/allure-results</resultsDirectory>
+                </configuration>
             </plugin>
         </plugins>
     </build>
