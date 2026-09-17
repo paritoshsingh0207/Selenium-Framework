@@ -103,6 +103,15 @@ public final class FrameworkConfig {
         return Paths.get(System.getProperty("pdf.report.path", "target/reports/hybrid-automation-report.pdf"));
     }
 
+    /**
+     * Sensitive values stay masked by default in generated evidence.
+     * Use -Dreport.showSensitiveData=true only with safe/demo credentials
+     * when the exact value is intentionally required in the report.
+     */
+    public static boolean showSensitiveReportData() {
+        return Boolean.parseBoolean(System.getProperty("report.showSensitiveData", "false"));
+    }
+
     public static Path artifactsDirectory() {
         return Paths.get(System.getProperty("artifacts.dir", "artifacts"));
     }
