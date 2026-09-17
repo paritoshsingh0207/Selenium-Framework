@@ -27,6 +27,7 @@ public final class ExecutionResultStore {
         Throwable throwable = result.getThrowable();
         String message = throwable == null || throwable.getMessage() == null ? ""
                 : throwable.getMessage().replace('\n', ' ').replace('\r', ' ');
+
         RESULTS.add(new ExecutionRecord(
                 result.getTestClass().getName() + "#" + result.getMethod().getMethodName() + "#" + identity,
                 result.getTestClass().getName() + "." + result.getMethod().getMethodName(),
@@ -39,7 +40,8 @@ public final class ExecutionResultStore {
                 result.getStartMillis(), result.getEndMillis(),
                 Math.max(0, result.getEndMillis() - result.getStartMillis()),
                 message,
-                screenshot == null ? "" : screenshot.toAbsolutePath().toString()));
+                screenshot == null ? "" : screenshot.toAbsolutePath().toString(),
+                ReportEvidenceContext.snapshot()));
     }
 
     public static List<ExecutionRecord> snapshot() {
