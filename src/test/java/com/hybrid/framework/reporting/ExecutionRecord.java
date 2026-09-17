@@ -1,5 +1,9 @@
 package com.hybrid.framework.reporting;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /** Immutable result of one TestNG test attempt. */
 public final class ExecutionRecord {
     private final String executionKey;
@@ -15,11 +19,13 @@ public final class ExecutionRecord {
     private final long durationMs;
     private final String failureMessage;
     private final String screenshotPath;
+    private final List<ReportEntry> reportEntries;
 
     public ExecutionRecord(String executionKey, String testName, String dataIdentity,
                            ExecutionStatus status, int attempt, String engine, String browser,
                            String threadName, long startTime, long endTime, long durationMs,
-                           String failureMessage, String screenshotPath) {
+                           String failureMessage, String screenshotPath,
+                           List<ReportEntry> reportEntries) {
         this.executionKey = executionKey;
         this.testName = testName;
         this.dataIdentity = dataIdentity;
@@ -33,6 +39,9 @@ public final class ExecutionRecord {
         this.durationMs = durationMs;
         this.failureMessage = failureMessage;
         this.screenshotPath = screenshotPath;
+        this.reportEntries = Collections.unmodifiableList(
+                new ArrayList<ReportEntry>(reportEntries == null
+                        ? Collections.<ReportEntry>emptyList() : reportEntries));
     }
 
     public String executionKey() { return executionKey; }
@@ -48,4 +57,5 @@ public final class ExecutionRecord {
     public long durationMs() { return durationMs; }
     public String failureMessage() { return failureMessage; }
     public String screenshotPath() { return screenshotPath; }
+    public List<ReportEntry> reportEntries() { return reportEntries; }
 }
