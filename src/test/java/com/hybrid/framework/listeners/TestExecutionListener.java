@@ -3,6 +3,7 @@ package com.hybrid.framework.listeners;
 import com.hybrid.framework.artifacts.ArtifactContext;
 import com.hybrid.framework.logging.TestLogContext;
 import com.hybrid.framework.reporting.ExecutionResultStore;
+import com.hybrid.framework.reporting.ReportEvidenceContext;
 import com.hybrid.framework.retry.RetryTracker;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,6 +16,7 @@ public final class TestExecutionListener implements ITestListener {
     @Override
     public void onTestStart(ITestResult result) {
         ArtifactContext.clear();
+        ReportEvidenceContext.clear();
         TestLogContext.bind(result);
         LOGGER.info("TEST_START method={} attempt={} parameters={}",
                 result.getMethod().getMethodName(), RetryTracker.currentAttempt(result), result.getParameters());
@@ -38,11 +40,13 @@ public final class TestExecutionListener implements ITestListener {
     }
 
     private void finish(ITestResult result, String event) {
+        // Snapshot the evidence before clearing the ThreadLocal contexts.
         ExecutionResultStore.record(result, ArtifactContext.screenshot());
         LOGGER.info("{} method={} attempt={} durationMs={} screenshot={}", event,
                 result.getMethod().getMethodName(), RetryTracker.currentAttempt(result),
                 result.getEndMillis() - result.getStartMillis(), ArtifactContext.screenshot());
         ArtifactContext.clear();
+        ReportEvidenceContext.clear();
         TestLogContext.clear();
     }
 }
