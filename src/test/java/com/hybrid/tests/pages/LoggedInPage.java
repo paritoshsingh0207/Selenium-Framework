@@ -45,8 +45,12 @@ public final class LoggedInPage {
         return driver.getCurrentUrl().contains("/logged-in-successfully/");
     }
 
+    public String successMessageText() {
+        return driver.getText(SUCCESS_MESSAGE);
+    }
+
     public boolean hasSuccessMessage() {
-        return driver.getText(SUCCESS_MESSAGE)
+        return successMessageText()
                 .toLowerCase()
                 .contains("successfully logged in");
     }
