@@ -1,1 +1,0 @@
-Google Photos Migrator runtime is intentionally static and zero-billing. The GitHub Pages app never receives OAuth tokens and never transfers media bytes. Google Photos Partner Sharing or Shared Albums perform the copy inside Google Photos.
