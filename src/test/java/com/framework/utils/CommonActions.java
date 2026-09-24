@@ -1,6 +1,8 @@
 package com.framework.utils;
 
 import com.framework.base.BaseTest;
+import com.framework.config.ConfigReader;
+import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.SelectOption;
 import com.microsoft.playwright.options.WaitUntilState;
@@ -29,6 +31,24 @@ public class CommonActions extends BaseTest {
     public void click(String selector) {
         LOGGER.info("Clicking element: {}", selector);
         getPage().locator(selector).click();
+    }
+
+    public void clickAndWaitForUrl(String selector, String urlPattern) {
+        int navigationTimeoutSeconds = ConfigReader.getInt("navigationTimeoutSeconds");
+        LOGGER.info("Clicking element and waiting for URL: {} -> {}", selector, urlPattern);
+
+        getPage().locator(selector).click(
+                new Locator.ClickOptions().setNoWaitAfter(true)
+        );
+
+        getPage().waitForURL(
+                urlPattern,
+                new Page.WaitForURLOptions()
+                        .setTimeout(navigationTimeoutSeconds * 1000.0)
+                        .setWaitUntil(WaitUntilState.COMMIT)
+        );
+
+        LOGGER.info("Expected URL reached: {}", getPage().url());
     }
 
     public void sendText(String selector, String text) {
@@ -73,8 +93,13 @@ public class CommonActions extends BaseTest {
 
     public byte[] takeScreenshot() {
         LOGGER.debug("Capturing screenshot with short failure-handler timeout");
-        return getPage().screenshot(
-                new Page.ScreenshotOptions().setTimeout(3000)
-        );
+        try {
+            return getPage().screenshot(
+                    new Page.ScreenshotOptions().setTimeout(3000.0)
+            );
+        } catch (RuntimeException exception) {
+            LOGGER.warn("Failure screenshot could not be captured: {}", exception.getMessage());
+            return null;
+        }
     }
 }
