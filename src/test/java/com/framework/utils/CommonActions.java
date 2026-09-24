@@ -1,11 +1,10 @@
 package com.framework.utils;
 
 import com.framework.base.BaseTest;
-import com.framework.config.ConfigReader;
 import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.SelectOption;
-import com.microsoft.playwright.options.WaitUntilState;
+import com.microsoft.playwright.options.WaitForSelectorState;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -15,23 +14,14 @@ public class CommonActions extends BaseTest {
 
     public void open(String url) {
         LOGGER.info("Opening URL: {}", url);
-        getPage().navigate(
-                url,
-                new Page.NavigateOptions().setWaitUntil(WaitUntilState.COMMIT)
-        );
-        LOGGER.info("Navigation committed: {}", getPage().url());
+        getPage().navigate(url);
+        LOGGER.info("Page opened: {}", getPage().url());
     }
 
     public void waitForVisible(String selector) {
         LOGGER.info("Waiting for element to be visible: {}", selector);
-        getPage().locator(selector).waitFor();
-        LOGGER.info("Element is visible: {}", selector);
-    }
-
-    public void waitForVisible(String selector, int timeoutSeconds) {
-        LOGGER.info("Waiting up to {}s for element to be visible: {}", timeoutSeconds, selector);
         getPage().locator(selector).waitFor(
-                new Locator.WaitForOptions().setTimeout(timeoutSeconds * 1000.0)
+                new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE)
         );
         LOGGER.info("Element is visible: {}", selector);
     }
@@ -39,30 +29,6 @@ public class CommonActions extends BaseTest {
     public void click(String selector) {
         LOGGER.info("Clicking element: {}", selector);
         getPage().locator(selector).click();
-    }
-
-    public void clickAndWaitForVisible(String clickSelector, String expectedSelector) {
-        int navigationTimeoutSeconds = ConfigReader.getInt("navigationTimeoutSeconds");
-        LOGGER.info(
-                "Clicking element and waiting for destination element: {} -> {}",
-                clickSelector,
-                expectedSelector
-        );
-
-        getPage().locator(clickSelector).click(
-                new Locator.ClickOptions().setNoWaitAfter(true)
-        );
-
-        try {
-            waitForVisible(expectedSelector, navigationTimeoutSeconds);
-            LOGGER.info("Destination element reached. Current URL: {}", getPage().url());
-        } catch (RuntimeException exception) {
-            LOGGER.error(
-                    "Destination element was not visible after click. Current URL: {}",
-                    getPage().url()
-            );
-            throw exception;
-        }
     }
 
     public void sendText(String selector, String text) {

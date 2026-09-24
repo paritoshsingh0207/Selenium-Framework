@@ -8,7 +8,7 @@ public class LoginPage {
     private final String username = "#username";
     private final String password = "#password";
     private final String submit = "#submit";
-    private final String successHeading = ".post-title";
+    private final String successHeading = "xpath=//h1[normalize-space()='Logged In Successfully']";
 
     public void open(String url) {
         actions.open(url);
@@ -24,11 +24,12 @@ public class LoginPage {
     }
 
     public void clickSubmit() {
-        actions.clickAndWaitForVisible(submit, successHeading);
+        actions.click(submit);
     }
 
     public boolean isSuccessPageDisplayed() {
-        return actions.getCurrentUrl().contains("logged-in-successfully")
+        actions.waitForVisible(successHeading);
+        return actions.getCurrentUrl().contains("/logged-in-successfully/")
                 && actions.getText(successHeading).contains("Logged In Successfully");
     }
 }
