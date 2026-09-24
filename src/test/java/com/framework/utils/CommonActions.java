@@ -15,8 +15,15 @@ public class CommonActions extends BaseTest {
         LOGGER.info("Opening URL: {}", url);
         getPage().navigate(
                 url,
-                new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                new Page.NavigateOptions().setWaitUntil(WaitUntilState.COMMIT)
         );
+        LOGGER.info("Navigation committed: {}", getPage().url());
+    }
+
+    public void waitForVisible(String selector) {
+        LOGGER.info("Waiting for element to be visible: {}", selector);
+        getPage().locator(selector).waitFor();
+        LOGGER.info("Element is visible: {}", selector);
     }
 
     public void click(String selector) {
