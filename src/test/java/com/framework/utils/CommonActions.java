@@ -28,27 +28,41 @@ public class CommonActions extends BaseTest {
         LOGGER.info("Element is visible: {}", selector);
     }
 
+    public void waitForVisible(String selector, int timeoutSeconds) {
+        LOGGER.info("Waiting up to {}s for element to be visible: {}", timeoutSeconds, selector);
+        getPage().locator(selector).waitFor(
+                new Locator.WaitForOptions().setTimeout(timeoutSeconds * 1000.0)
+        );
+        LOGGER.info("Element is visible: {}", selector);
+    }
+
     public void click(String selector) {
         LOGGER.info("Clicking element: {}", selector);
         getPage().locator(selector).click();
     }
 
-    public void clickAndWaitForUrl(String selector, String urlPattern) {
+    public void clickAndWaitForVisible(String clickSelector, String expectedSelector) {
         int navigationTimeoutSeconds = ConfigReader.getInt("navigationTimeoutSeconds");
-        LOGGER.info("Clicking element and waiting for URL: {} -> {}", selector, urlPattern);
+        LOGGER.info(
+                "Clicking element and waiting for destination element: {} -> {}",
+                clickSelector,
+                expectedSelector
+        );
 
-        getPage().locator(selector).click(
+        getPage().locator(clickSelector).click(
                 new Locator.ClickOptions().setNoWaitAfter(true)
         );
 
-        getPage().waitForURL(
-                urlPattern,
-                new Page.WaitForURLOptions()
-                        .setTimeout(navigationTimeoutSeconds * 1000.0)
-                        .setWaitUntil(WaitUntilState.COMMIT)
-        );
-
-        LOGGER.info("Expected URL reached: {}", getPage().url());
+        try {
+            waitForVisible(expectedSelector, navigationTimeoutSeconds);
+            LOGGER.info("Destination element reached. Current URL: {}", getPage().url());
+        } catch (RuntimeException exception) {
+            LOGGER.error(
+                    "Destination element was not visible after click. Current URL: {}",
+                    getPage().url()
+            );
+            throw exception;
+        }
     }
 
     public void sendText(String selector, String text) {
@@ -64,6 +78,10 @@ public class CommonActions extends BaseTest {
     public boolean isDisplayed(String selector) {
         LOGGER.debug("Checking visibility of element: {}", selector);
         return getPage().locator(selector).isVisible();
+    }
+
+    public String getCurrentUrl() {
+        return getPage().url();
     }
 
     public void selectDropdownByVisibleText(String selector, String visibleText) {
