@@ -21,6 +21,9 @@ public final class BrowserManager {
     public static void startBrowser() {
         String browserName = ConfigReader.get("browser").toLowerCase();
         boolean headless = Boolean.parseBoolean(ConfigReader.get("headless"));
+        int actionTimeoutSeconds = ConfigReader.getInt("explicitWaitSeconds");
+        int navigationTimeoutSeconds = ConfigReader.getInt("navigationTimeoutSeconds");
+
         LOGGER.info("Starting Playwright browser: {} | headless={}", browserName, headless);
 
         try {
@@ -28,9 +31,13 @@ public final class BrowserManager {
             PLAYWRIGHT.set(playwright);
 
             BrowserType browserType;
-            if ("firefox".equals(browserName)) browserType = playwright.firefox();
-            else if ("webkit".equals(browserName)) browserType = playwright.webkit();
-            else browserType = playwright.chromium();
+            if ("firefox".equals(browserName)) {
+                browserType = playwright.firefox();
+            } else if ("webkit".equals(browserName)) {
+                browserType = playwright.webkit();
+            } else {
+                browserType = playwright.chromium();
+            }
 
             Browser browser = browserType.launch(new BrowserType.LaunchOptions().setHeadless(headless));
             BROWSER.set(browser);
@@ -39,9 +46,15 @@ public final class BrowserManager {
             CONTEXT.set(context);
 
             Page page = context.newPage();
-            page.setDefaultTimeout(ConfigReader.getInt("explicitWaitSeconds") * 1000.0);
+            page.setDefaultTimeout(actionTimeoutSeconds * 1000.0);
+            page.setDefaultNavigationTimeout(navigationTimeoutSeconds * 1000.0);
             PAGE.set(page);
-            LOGGER.info("Playwright browser started successfully");
+
+            LOGGER.info(
+                    "Playwright browser started successfully | actionTimeout={}s | navigationTimeout={}s",
+                    actionTimeoutSeconds,
+                    navigationTimeoutSeconds
+            );
         } catch (RuntimeException exception) {
             LOGGER.error("Failed to start Playwright browser: {}", browserName, exception);
             closeBrowser();
@@ -49,11 +62,15 @@ public final class BrowserManager {
         }
     }
 
-    public static boolean hasPage() { return PAGE.get() != null; }
+    public static boolean hasPage() {
+        return PAGE.get() != null;
+    }
 
     public static Page getPage() {
         Page page = PAGE.get();
-        if (page == null) throw new IllegalStateException("Playwright Page has not been started. Check Hooks.");
+        if (page == null) {
+            throw new IllegalStateException("Playwright Page has not been started. Check Hooks.");
+        }
         return page;
     }
 
@@ -62,7 +79,9 @@ public final class BrowserManager {
         Browser browser = BROWSER.get();
         Playwright playwright = PLAYWRIGHT.get();
 
-        if (context != null || browser != null || playwright != null) LOGGER.info("Closing Playwright browser");
+        if (context != null || browser != null || playwright != null) {
+            LOGGER.info("Closing Playwright browser");
+        }
 
         try {
             if (context != null) context.close();

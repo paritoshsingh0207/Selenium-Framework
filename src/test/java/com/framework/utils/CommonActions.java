@@ -1,7 +1,9 @@
 package com.framework.utils;
 
 import com.framework.base.BaseTest;
+import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.SelectOption;
+import com.microsoft.playwright.options.WaitUntilState;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -11,7 +13,10 @@ public class CommonActions extends BaseTest {
 
     public void open(String url) {
         LOGGER.info("Opening URL: {}", url);
-        getPage().navigate(url);
+        getPage().navigate(
+                url,
+                new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+        );
     }
 
     public void click(String selector) {
