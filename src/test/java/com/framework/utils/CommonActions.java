@@ -19,7 +19,7 @@ public class CommonActions extends BaseTest {
 
     private static final Logger LOGGER = LogManager.getLogger(CommonActions.class);
 
-    private WebDriverWait wait() {
+    private WebDriverWait webDriverWait() {
         return new WebDriverWait(getDriver(), Duration.ofSeconds(ConfigReader.getInt("explicitWaitSeconds")));
     }
 
@@ -30,53 +30,53 @@ public class CommonActions extends BaseTest {
 
     public void click(By locator) {
         LOGGER.info("Clicking element: {}", locator);
-        wait().until(ExpectedConditions.elementToBeClickable(locator)).click();
+        webDriverWait().until(ExpectedConditions.elementToBeClickable(locator)).click();
     }
 
     public void sendText(By locator, String text) {
         LOGGER.info("Entering text into element: {}", locator);
-        WebElement element = wait().until(ExpectedConditions.visibilityOfElementLocated(locator));
+        WebElement element = webDriverWait().until(ExpectedConditions.visibilityOfElementLocated(locator));
         element.clear();
         element.sendKeys(text);
     }
 
     public String getText(By locator) {
         LOGGER.debug("Reading text from element: {}", locator);
-        return wait().until(ExpectedConditions.visibilityOfElementLocated(locator)).getText();
+        return webDriverWait().until(ExpectedConditions.visibilityOfElementLocated(locator)).getText();
     }
 
     public boolean isDisplayed(By locator) {
         LOGGER.debug("Checking visibility of element: {}", locator);
-        return wait().until(ExpectedConditions.visibilityOfElementLocated(locator)).isDisplayed();
+        return webDriverWait().until(ExpectedConditions.visibilityOfElementLocated(locator)).isDisplayed();
     }
 
     public void selectDropdownByVisibleText(By locator, String visibleText) {
         LOGGER.info("Selecting dropdown option by visible text '{}' from: {}", visibleText, locator);
-        WebElement element = wait().until(ExpectedConditions.visibilityOfElementLocated(locator));
+        WebElement element = webDriverWait().until(ExpectedConditions.visibilityOfElementLocated(locator));
         new Select(element).selectByVisibleText(visibleText);
     }
 
     public void selectDropdownByValue(By locator, String value) {
         LOGGER.info("Selecting dropdown option by value '{}' from: {}", value, locator);
-        WebElement element = wait().until(ExpectedConditions.visibilityOfElementLocated(locator));
+        WebElement element = webDriverWait().until(ExpectedConditions.visibilityOfElementLocated(locator));
         new Select(element).selectByValue(value);
     }
 
     public void selectRadioButton(By locator) {
         LOGGER.info("Selecting radio button: {}", locator);
-        WebElement element = wait().until(ExpectedConditions.elementToBeClickable(locator));
+        WebElement element = webDriverWait().until(ExpectedConditions.elementToBeClickable(locator));
         if (!element.isSelected()) element.click();
     }
 
     public void selectCheckbox(By locator) {
         LOGGER.info("Selecting checkbox: {}", locator);
-        WebElement element = wait().until(ExpectedConditions.elementToBeClickable(locator));
+        WebElement element = webDriverWait().until(ExpectedConditions.elementToBeClickable(locator));
         if (!element.isSelected()) element.click();
     }
 
     public void hover(By locator) {
         LOGGER.info("Hovering over element: {}", locator);
-        WebElement element = wait().until(ExpectedConditions.visibilityOfElementLocated(locator));
+        WebElement element = webDriverWait().until(ExpectedConditions.visibilityOfElementLocated(locator));
         new Actions(getDriver()).moveToElement(element).perform();
     }
 
