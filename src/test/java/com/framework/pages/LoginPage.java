@@ -9,7 +9,12 @@ public class LoginPage {
     private final By username = By.id("username");
     private final By password = By.id("password");
     private final By submit = By.id("submit");
-    private final By successHeading = By.cssSelector(".post-title");
+    private final By successHeading = By.xpath("//h1[normalize-space()='Logged In Successfully']");
+
+    public void open(String url) {
+        actions.open(url);
+        actions.waitForVisible(username);
+    }
 
     public void enterUsername(String value) {
         actions.sendText(username, value);
@@ -20,11 +25,12 @@ public class LoginPage {
     }
 
     public void clickSubmit() {
-        actions.clickAndWaitForUrlContains(submit, "logged-in-successfully");
+        actions.click(submit);
     }
 
     public boolean isSuccessPageDisplayed() {
         actions.waitForVisible(successHeading);
-        return actions.getText(successHeading).contains("Logged In Successfully");
+        return actions.getCurrentUrl().contains("/logged-in-successfully/")
+                && actions.getText(successHeading).contains("Logged In Successfully");
     }
 }

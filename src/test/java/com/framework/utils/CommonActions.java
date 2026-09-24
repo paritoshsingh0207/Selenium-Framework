@@ -26,34 +26,20 @@ public class CommonActions extends BaseTest {
         );
     }
 
-    private WebDriverWait navigationWait() {
-        return new WebDriverWait(
-                getDriver(),
-                Duration.ofSeconds(ConfigReader.getInt("navigationTimeoutSeconds"))
-        );
-    }
-
     public void open(String url) {
         LOGGER.info("Opening URL: {}", url);
         getDriver().get(url);
-    }
-
-    public void click(By locator) {
-        LOGGER.info("Clicking element: {}", locator);
-        webDriverWait().until(ExpectedConditions.elementToBeClickable(locator)).click();
-    }
-
-    public void clickAndWaitForUrlContains(By locator, String urlFragment) {
-        LOGGER.info("Clicking element and waiting for URL to contain '{}': {}", urlFragment, locator);
-        webDriverWait().until(ExpectedConditions.elementToBeClickable(locator)).click();
-        navigationWait().until(ExpectedConditions.urlContains(urlFragment));
-        LOGGER.info("Expected URL reached: {}", getDriver().getCurrentUrl());
     }
 
     public void waitForVisible(By locator) {
         LOGGER.info("Waiting for element to be visible: {}", locator);
         webDriverWait().until(ExpectedConditions.visibilityOfElementLocated(locator));
         LOGGER.info("Element is visible: {}", locator);
+    }
+
+    public void click(By locator) {
+        LOGGER.info("Clicking element: {}", locator);
+        webDriverWait().until(ExpectedConditions.elementToBeClickable(locator)).click();
     }
 
     public void sendText(By locator, String text) {
@@ -71,6 +57,10 @@ public class CommonActions extends BaseTest {
     public boolean isDisplayed(By locator) {
         LOGGER.debug("Checking visibility of element: {}", locator);
         return webDriverWait().until(ExpectedConditions.visibilityOfElementLocated(locator)).isDisplayed();
+    }
+
+    public String getCurrentUrl() {
+        return getDriver().getCurrentUrl();
     }
 
     public void selectDropdownByVisibleText(By locator, String visibleText) {
