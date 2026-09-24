@@ -72,7 +72,9 @@ public class CommonActions extends BaseTest {
     }
 
     public byte[] takeScreenshot() {
-        LOGGER.debug("Capturing screenshot");
-        return getPage().screenshot();
+        LOGGER.debug("Capturing screenshot with short failure-handler timeout");
+        return getPage().screenshot(
+                new Page.ScreenshotOptions().setTimeout(3000)
+        );
     }
 }
