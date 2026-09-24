@@ -24,11 +24,11 @@ public class LoginPage {
     }
 
     public void clickSubmit() {
-        actions.clickAndWaitForUrl(submit, "**/logged-in-successfully/**");
+        actions.clickAndWaitForVisible(submit, successHeading);
     }
 
     public boolean isSuccessPageDisplayed() {
-        actions.waitForVisible(successHeading);
-        return actions.getText(successHeading).contains("Logged In Successfully");
+        return actions.getCurrentUrl().contains("logged-in-successfully")
+                && actions.getText(successHeading).contains("Logged In Successfully");
     }
 }
