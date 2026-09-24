@@ -15,12 +15,20 @@ public class LoginPage {
         actions.waitForVisible(username);
     }
 
-    public void enterUsername(String value) { actions.sendText(username, value); }
-    public void enterPassword(String value) { actions.sendText(password, value); }
-    public void clickSubmit() { actions.click(submit); }
+    public void enterUsername(String value) {
+        actions.sendText(username, value);
+    }
+
+    public void enterPassword(String value) {
+        actions.sendText(password, value);
+    }
+
+    public void clickSubmit() {
+        actions.clickAndWaitForUrl(submit, "**/logged-in-successfully/**");
+    }
 
     public boolean isSuccessPageDisplayed() {
-        return actions.isDisplayed(successHeading)
-                && actions.getText(successHeading).contains("Logged In Successfully");
+        actions.waitForVisible(successHeading);
+        return actions.getText(successHeading).contains("Logged In Successfully");
     }
 }
