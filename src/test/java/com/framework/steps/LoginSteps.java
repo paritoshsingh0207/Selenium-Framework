@@ -2,18 +2,18 @@ package com.framework.steps;
 
 import com.framework.config.ConfigReader;
 import com.framework.pages.LoginPage;
-import com.framework.utils.CommonActions;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import org.testng.Assert;
 
 public class LoginSteps {
-    private final CommonActions actions = new CommonActions();
     private final LoginPage loginPage = new LoginPage();
 
     @Given("user opens the login page")
-    public void userOpensLoginPage() { actions.open(ConfigReader.get("baseUrl")); }
+    public void userOpensLoginPage() {
+        loginPage.open(ConfigReader.get("baseUrl"));
+    }
 
     @When("user enters username {string}")
     public void userEntersUsername(String username) { loginPage.enterUsername(username); }
