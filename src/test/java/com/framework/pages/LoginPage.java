@@ -11,12 +11,20 @@ public class LoginPage {
     private final By submit = By.id("submit");
     private final By successHeading = By.cssSelector(".post-title");
 
-    public void enterUsername(String value) { actions.sendText(username, value); }
-    public void enterPassword(String value) { actions.sendText(password, value); }
-    public void clickSubmit() { actions.click(submit); }
+    public void enterUsername(String value) {
+        actions.sendText(username, value);
+    }
+
+    public void enterPassword(String value) {
+        actions.sendText(password, value);
+    }
+
+    public void clickSubmit() {
+        actions.clickAndWaitForUrlContains(submit, "logged-in-successfully");
+    }
 
     public boolean isSuccessPageDisplayed() {
-        return actions.isDisplayed(successHeading)
-                && actions.getText(successHeading).contains("Logged In Successfully");
+        actions.waitForVisible(successHeading);
+        return actions.getText(successHeading).contains("Logged In Successfully");
     }
 }
