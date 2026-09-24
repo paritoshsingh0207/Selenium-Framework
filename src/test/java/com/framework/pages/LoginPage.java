@@ -10,6 +10,11 @@ public class LoginPage {
     private final String submit = "#submit";
     private final String successHeading = ".post-title";
 
+    public void open(String url) {
+        actions.open(url);
+        actions.waitForVisible(username);
+    }
+
     public void enterUsername(String value) { actions.sendText(username, value); }
     public void enterPassword(String value) { actions.sendText(password, value); }
     public void clickSubmit() { actions.click(submit); }
