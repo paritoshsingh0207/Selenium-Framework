@@ -20,7 +20,17 @@ public class CommonActions extends BaseTest {
     private static final Logger LOGGER = LogManager.getLogger(CommonActions.class);
 
     private WebDriverWait webDriverWait() {
-        return new WebDriverWait(getDriver(), Duration.ofSeconds(ConfigReader.getInt("explicitWaitSeconds")));
+        return new WebDriverWait(
+                getDriver(),
+                Duration.ofSeconds(ConfigReader.getInt("explicitWaitSeconds"))
+        );
+    }
+
+    private WebDriverWait navigationWait() {
+        return new WebDriverWait(
+                getDriver(),
+                Duration.ofSeconds(ConfigReader.getInt("navigationTimeoutSeconds"))
+        );
     }
 
     public void open(String url) {
@@ -31,6 +41,19 @@ public class CommonActions extends BaseTest {
     public void click(By locator) {
         LOGGER.info("Clicking element: {}", locator);
         webDriverWait().until(ExpectedConditions.elementToBeClickable(locator)).click();
+    }
+
+    public void clickAndWaitForUrlContains(By locator, String urlFragment) {
+        LOGGER.info("Clicking element and waiting for URL to contain '{}': {}", urlFragment, locator);
+        webDriverWait().until(ExpectedConditions.elementToBeClickable(locator)).click();
+        navigationWait().until(ExpectedConditions.urlContains(urlFragment));
+        LOGGER.info("Expected URL reached: {}", getDriver().getCurrentUrl());
+    }
+
+    public void waitForVisible(By locator) {
+        LOGGER.info("Waiting for element to be visible: {}", locator);
+        webDriverWait().until(ExpectedConditions.visibilityOfElementLocated(locator));
+        LOGGER.info("Element is visible: {}", locator);
     }
 
     public void sendText(By locator, String text) {
@@ -65,13 +88,17 @@ public class CommonActions extends BaseTest {
     public void selectRadioButton(By locator) {
         LOGGER.info("Selecting radio button: {}", locator);
         WebElement element = webDriverWait().until(ExpectedConditions.elementToBeClickable(locator));
-        if (!element.isSelected()) element.click();
+        if (!element.isSelected()) {
+            element.click();
+        }
     }
 
     public void selectCheckbox(By locator) {
         LOGGER.info("Selecting checkbox: {}", locator);
         WebElement element = webDriverWait().until(ExpectedConditions.elementToBeClickable(locator));
-        if (!element.isSelected()) element.click();
+        if (!element.isSelected()) {
+            element.click();
+        }
     }
 
     public void hover(By locator) {
